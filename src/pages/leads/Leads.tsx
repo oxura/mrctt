@@ -5,11 +5,11 @@ import {
   PlusIcon,
   TableCellsIcon,
   Squares2X2Icon,
-  FunnelIcon,
 } from '@heroicons/react/24/outline';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
+import Modal, { ModalFooter } from '../../components/common/Modal';
 import { useAppStore } from '../../store/appStore';
 import { Lead } from '../../types';
 import { nanoid } from '../../utils/nanoid';
@@ -255,24 +255,54 @@ function AddLeadModal({ onClose, onSubmit }: AddLeadModalProps) {
     statusId: company?.leadStatuses[0]?.id || '',
     ownerId: '',
     source: '',
-    notes: [],
   });
+  const [note, setNote] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(formData);
+  const handleConfirm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.name.trim()) newErrors.name = 'Введите имя';
+    if (!formData.phone.trim()) newErrors.phone = 'Введите телефон';
+
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Неверный формат email';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
+    onSubmit({
+      ...formData,
+      notes: note.trim() ? [note.trim()] : [],
+    } as Omit<Lead, 'id' | 'companyId' | 'createdAt' | 'history'>);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="mb-4 text-2xl font-bold text-gray-900">Добавить лид вручную</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title="Добавить лид вручную"
+      size="lg"
+      footer={
+        <ModalFooter
+          onCancel={onClose}
+          onConfirm={handleConfirm}
+          confirmText="Создать лид"
+        />
+      }
+    >
+      <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
           <Input
             label="Имя"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
+            error={errors.name}
           />
           <Input
             label="Телефон"
@@ -280,13 +310,28 @@ function AddLeadModal({ onClose, onSubmit }: AddLeadModalProps) {
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             required
+            error={errors.phone}
           />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
           <Input
             label="Email"
             type="email"
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            error={errors.email}
+            placeholder="client@example.com"
           />
+          <Input
+            label="Источник (utm_source)"
+            value={formData.source}
+            onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+            placeholder="instagram, webinar, website..."
+          />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
           <Select
             label="Продукт"
             value={formData.productId}
@@ -299,33 +344,46 @@ function AddLeadModal({ onClose, onSubmit }: AddLeadModalProps) {
               </option>
             ))}
           </Select>
+
           <Select
-            label="Ответственный"
-            value={formData.ownerId}
-            onChange={(e) => setFormData({ ...formData, ownerId: e.target.value })}
+            label="Статус"
+            value={formData.statusId}
+            onChange={(e) => setFormData({ ...formData, statusId: e.target.value })}
           >
-            <option value="">Не назначен</option>
-            {team.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.name}
+            {company?.leadStatuses.map((status) => (
+              <option key={status.id} value={status.id}>
+                {status.name}
               </option>
             ))}
           </Select>
-          <Input
-            label="Источник (utm_source)"
-            value={formData.source}
-            onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-            placeholder="instagram, website, facebook..."
-          />
+        </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Отмена
-            </Button>
-            <Button type="submit">Создать лид</Button>
-          </div>
-        </form>
+        <Select
+          label="Ответственный"
+          value={formData.ownerId}
+          onChange={(e) => setFormData({ ...formData, ownerId: e.target.value })}
+        >
+          <option value="">Не назначен</option>
+          {team.map((member) => (
+            <option key={member.id} value={member.id}>
+              {member.name}
+            </option>
+          ))}
+        </Select>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700">
+            Комментарий
+          </label>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Например: Связаться завтра в 12:00"
+            rows={3}
+            className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

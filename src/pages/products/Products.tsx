@@ -7,6 +7,7 @@ import {
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
+import Modal, { ModalFooter } from '../../components/common/Modal';
 import { useAppStore } from '../../store/appStore';
 import { Product, GroupFlow } from '../../types';
 import { nanoid } from '../../utils/nanoid';
@@ -200,11 +201,15 @@ function ProductModal({ initialValue, onClose, onSubmit }: ProductModalProps) {
     price: initialValue?.price?.toString() || '',
     status: initialValue?.status ?? 'active',
   });
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConfirm = () => {
+    if (!formData.name.trim()) {
+      setError('Введите название продукта');
+      return;
+    }
+    setError('');
     onSubmit({
-      ...initialValue,
       name: formData.name,
       description: formData.description,
       type: formData.type,
@@ -214,27 +219,41 @@ function ProductModal({ initialValue, onClose, onSubmit }: ProductModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="mb-4 text-2xl font-bold text-gray-900">
-          {initialValue ? 'Редактировать продукт' : 'Новый продукт'}
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Название"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={initialValue ? 'Редактировать продукт' : 'Новый продукт'}
+      size="lg"
+      footer={
+        <ModalFooter
+          onCancel={onClose}
+          onConfirm={handleConfirm}
+          confirmText={initialValue ? 'Сохранить' : 'Создать'}
+        />
+      }
+    >
+      <div className="space-y-4">
+        <Input
+          label="Название"
+          value={formData.name}
+          onChange={(e) => {
+            setFormData({ ...formData, name: e.target.value });
+            if (error) setError('');
+          }}
+          required
+          error={error}
+        />
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Описание</label>
+          <textarea
+            className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            rows={3}
+            placeholder="Краткое описание продукта или услуги"
           />
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Описание</label>
-            <textarea
-              className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={3}
-            />
-          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
           <Select
             label="Тип"
             value={formData.type}
@@ -247,31 +266,24 @@ function ProductModal({ initialValue, onClose, onSubmit }: ProductModalProps) {
             <option value="other">Другое</option>
           </Select>
           <Input
-            label="Цена"
+            label="Цена (₽)"
             type="number"
             value={formData.price}
             onChange={(e) => setFormData({ ...formData, price: e.target.value })}
             placeholder="0"
+            min="0"
           />
-          <Select
-            label="Статус"
-            value={formData.status}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value as Product['status'] })}
-          >
-            <option value="active">Активен</option>
-            <option value="archived">Архив</option>
-          </Select>
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Отмена
-            </Button>
-            <Button type="submit">
-              {initialValue ? 'Сохранить' : 'Создать'}
-            </Button>
-          </div>
-        </form>
+        </div>
+        <Select
+          label="Статус"
+          value={formData.status}
+          onChange={(e) => setFormData({ ...formData, status: e.target.value as Product['status'] })}
+        >
+          <option value="active">Активен</option>
+          <option value="archived">Архив</option>
+        </Select>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -286,71 +298,96 @@ function GroupModal({ onClose, onSubmit }: GroupModalProps) {
     productId: products[0]?.id || '',
     name: '',
     startDate: '',
-    capacity: 20,
-    enrolled: 0,
+    capacity: '20',
+    enrolled: '0',
   });
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConfirm = () => {
+    if (!formData.name.trim()) {
+      setError('Введите название группы');
+      return;
+    }
+    if (!formData.startDate) {
+      setError('Выберите дату старта');
+      return;
+    }
+    setError('');
     onSubmit({
       productId: formData.productId,
       name: formData.name,
       startDate: formData.startDate,
-      capacity: formData.capacity,
-      enrolled: formData.enrolled,
+      capacity: Number(formData.capacity) || 20,
+      enrolled: Number(formData.enrolled) || 0,
     });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="mb-4 text-2xl font-bold text-gray-900">Новая группа / поток</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Select
-            label="Продукт"
-            value={formData.productId}
-            onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-          >
-            {products.map((product) => (
-              <option key={product.id} value={product.id}>
-                {product.name}
-              </option>
-            ))}
-          </Select>
-          <Input
-            label="Название"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-          />
-          <Input
-            label="Дата старта"
-            type="date"
-            value={formData.startDate}
-            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-            required
-          />
+    <Modal
+      isOpen
+      onClose={onClose}
+      title="Новая группа / поток"
+      footer={
+        <ModalFooter
+          onCancel={onClose}
+          onConfirm={handleConfirm}
+          confirmText="Создать"
+        />
+      }
+    >
+      <div className="space-y-4">
+        <Select
+          label="Продукт"
+          value={formData.productId}
+          onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
+          required
+        >
+          {products.map((product) => (
+            <option key={product.id} value={product.id}>
+              {product.name}
+            </option>
+          ))}
+        </Select>
+        <Input
+          label="Название"
+          value={formData.name}
+          onChange={(e) => {
+            setFormData({ ...formData, name: e.target.value });
+            if (error) setError('');
+          }}
+          placeholder="Например: Сентябрьский поток"
+          required
+          error={error && !formData.name ? error : undefined}
+        />
+        <Input
+          label="Дата старта"
+          type="date"
+          value={formData.startDate}
+          onChange={(e) => {
+            setFormData({ ...formData, startDate: e.target.value });
+            if (error) setError('');
+          }}
+          required
+          error={error && !formData.startDate ? error : undefined}
+        />
+        <div className="grid gap-4 md:grid-cols-2">
           <Input
             label="Лимит мест"
             type="number"
             value={formData.capacity}
-            onChange={(e) => setFormData({ ...formData, capacity: Number(e.target.value) })}
+            onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
+            min="1"
             required
           />
           <Input
             label="Уже записано"
             type="number"
             value={formData.enrolled}
-            onChange={(e) => setFormData({ ...formData, enrolled: Number(e.target.value) })}
+            onChange={(e) => setFormData({ ...formData, enrolled: e.target.value })}
+            min="0"
           />
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Отмена
-            </Button>
-            <Button type="submit">Создать</Button>
-          </div>
-        </form>
+        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

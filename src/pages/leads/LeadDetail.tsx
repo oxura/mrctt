@@ -10,6 +10,7 @@ import {
 import Button from '../../components/common/Button';
 import Select from '../../components/common/Select';
 import Input from '../../components/common/Input';
+import Modal, { ModalFooter } from '../../components/common/Modal';
 import { useAppStore } from '../../store/appStore';
 import { nanoid } from '../../utils/nanoid';
 
@@ -291,41 +292,58 @@ interface TaskModalProps {
 function TaskModal({ onClose, onCreate }: TaskModalProps) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (title.trim() && dueDate) {
-      onCreate({ title, dueDate });
+  const handleConfirm = () => {
+    if (!title.trim()) {
+      setError('Введите название задачи');
+      return;
     }
+    if (!dueDate) {
+      setError('Выберите дату и время');
+      return;
+    }
+    setError('');
+    onCreate({ title, dueDate });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="mb-4 text-2xl font-bold text-gray-900">Новая задача</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Название задачи"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Например: Перезвонить клиенту"
-            required
-          />
-          <Input
-            label="Дедлайн"
-            type="datetime-local"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            required
-          />
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Отмена
-            </Button>
-            <Button type="submit">Создать задачу</Button>
-          </div>
-        </form>
+    <Modal
+      isOpen
+      onClose={onClose}
+      title="Новая задача"
+      footer={
+        <ModalFooter
+          onCancel={onClose}
+          onConfirm={handleConfirm}
+          confirmText="Создать задачу"
+        />
+      }
+    >
+      <div className="space-y-4">
+        <Input
+          label="Название задачи"
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            if (error) setError('');
+          }}
+          placeholder="Например: Перезвонить клиенту"
+          required
+          error={error && !title.trim() ? error : undefined}
+        />
+        <Input
+          label="Дедлайн"
+          type="datetime-local"
+          value={dueDate}
+          onChange={(e) => {
+            setDueDate(e.target.value);
+            if (error) setError('');
+          }}
+          required
+          error={error && !dueDate ? error : undefined}
+        />
       </div>
-    </div>
+    </Modal>
   );
 }

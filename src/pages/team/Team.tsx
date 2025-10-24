@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
+import Modal, { ModalFooter } from '../../components/common/Modal';
 import { useAppStore, roleLabels } from '../../store/appStore';
 import { useAuthStore } from '../../store/authStore';
 import { nanoid } from '../../utils/nanoid';
@@ -89,9 +90,24 @@ function InviteModal({ onClose }: InviteModalProps) {
     email: '',
     role: 'manager',
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [success, setSuccess] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConfirm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.name.trim()) newErrors.name = 'Введите имя сотрудника';
+    if (!formData.email.trim()) {
+      newErrors.email = 'Введите email';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Неверный формат email';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     const newMember: User = {
       id: nanoid(),
       name: formData.name,
@@ -101,44 +117,54 @@ function InviteModal({ onClose }: InviteModalProps) {
       companyId: team[0]?.companyId,
     };
     addTeamMember(newMember);
-    onClose();
-    alert('Приглашение отправлено!');
+    setSuccess('Приглашение отправлено!');
+    setErrors({});
+    setFormData({ name: '', email: '', role: 'manager' });
+    setTimeout(() => {
+      setSuccess('');
+      onClose();
+    }, 800);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="mb-4 text-2xl font-bold text-gray-900">Пригласить участника</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Имя"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-          />
-          <Input
-            label="Email"
-            type="email"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            required
-          />
-          <Select
-            label="Роль"
-            value={formData.role}
-            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-          >
-            <option value="admin">Администратор</option>
-            <option value="manager">Менеджер</option>
-          </Select>
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Отмена
-            </Button>
-            <Button type="submit">Отправить приглашение</Button>
-          </div>
-        </form>
+    <Modal
+      isOpen
+      onClose={onClose}
+      title="Пригласить участника"
+      footer={
+        <ModalFooter
+          onCancel={onClose}
+          onConfirm={handleConfirm}
+          confirmText="Отправить приглашение"
+        />
+      }
+    >
+      <div className="space-y-4">
+        <Input
+          label="Имя"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          required
+          error={errors.name}
+        />
+        <Input
+          label="Email"
+          type="email"
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          required
+          error={errors.email}
+        />
+        <Select
+          label="Роль"
+          value={formData.role}
+          onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+        >
+          <option value="admin">Администратор</option>
+          <option value="manager">Менеджер</option>
+        </Select>
+        {success && <p className="text-sm text-emerald-600">{success}</p>}
       </div>
-    </div>
+    </Modal>
   );
 }
