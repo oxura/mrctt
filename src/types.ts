@@ -2,6 +2,7 @@ export type Role = 'owner' | 'admin' | 'manager' | 'superadmin';
 
 export type ModuleKey =
   | 'dashboard'
+  | 'analytics'
   | 'leads'
   | 'kanban'
   | 'products'
@@ -75,6 +76,7 @@ export interface Lead {
   productId?: string;
   groupId?: string;
   statusId: string;
+  kanbanOrder: number;
   ownerId?: string;
   createdAt: string;
   source?: string;

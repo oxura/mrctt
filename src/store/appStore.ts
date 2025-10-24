@@ -73,6 +73,7 @@ export interface AppState {
   updateTaskStatus: (taskId: string, status: Task['status']) => void;
   completeTask: (taskId: string) => void;
   addForm: (form: LeadForm) => void;
+  updateForm: (formId: string, updates: Partial<LeadForm>) => void;
   updateLeadStatuses: (statuses: LeadStatus[]) => void;
   setViewMode: (mode: ViewMode) => void;
   refreshKpi: () => void;
@@ -275,6 +276,12 @@ export const useAppStore = create<AppState>()(
     addForm: (form) =>
       set((state) => {
         state.forms.push(form);
+      }),
+    updateForm: (formId, updates) =>
+      set((state) => {
+        state.forms = state.forms.map((form) =>
+          form.id === formId ? { ...form, ...updates } : form
+        );
       }),
     updateLeadStatuses: (statuses) =>
       set((state) => {

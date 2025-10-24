@@ -52,7 +52,7 @@ export default function PublicForm() {
 }
 
 function FormRenderer({ formId }: { formId: string }) {
-  const { forms, addLead, company } = useAppStore();
+  const { forms, addLead, company, leads } = useAppStore();
   const form = forms.find((f) => f.id === formId);
 
   if (!form) return null;
@@ -62,6 +62,9 @@ function FormRenderer({ formId }: { formId: string }) {
     const formData = new FormData(e.currentTarget);
     const leadData = Object.fromEntries(formData.entries());
 
+    const statusId = company?.leadStatuses[0]?.id || 'status-new';
+    const sameStatusCount = leads.filter((lead) => lead.statusId === statusId).length;
+
     addLead({
       id: nanoid(),
       companyId: company!.id,
@@ -70,7 +73,8 @@ function FormRenderer({ formId }: { formId: string }) {
       name: (leadData.name as string) || 'Новый лид',
       phone: (leadData.phone as string) || '',
       productId: form.productId,
-      statusId: company?.leadStatuses[0]?.id || 'status-new',
+      statusId,
+      kanbanOrder: sameStatusCount,
       ownerId: undefined,
       groupId: undefined,
       notes: [],

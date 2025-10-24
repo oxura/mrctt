@@ -16,6 +16,7 @@ import {
   ChevronLeftIcon,
   ArrowRightOnRectangleIcon,
   BuildingOfficeIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
@@ -31,6 +32,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { name: 'Главная', path: '/', icon: HomeIcon, moduleKey: 'dashboard' },
+  { name: 'Аналитика', path: '/analytics', icon: ChartBarIcon, moduleKey: 'analytics', roles: ['owner', 'admin'] },
   { name: 'Лиды', path: '/leads', icon: UserGroupIcon, moduleKey: 'leads' },
   { name: 'Продукты', path: '/products', icon: ShoppingBagIcon, moduleKey: 'products', roles: ['owner', 'admin'] },
   { name: 'Календарь', path: '/calendar', icon: CalendarIcon, moduleKey: 'calendar' },
@@ -53,7 +55,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const { company } = useAppStore();
 
   const isSuperAdmin = user?.role === 'superadmin';
-  const allModuleKeys: ModuleKey[] = ['dashboard', 'leads', 'kanban', 'products', 'groups', 'calendar', 'team', 'forms', 'settings', 'billing'];
+  const allModuleKeys: ModuleKey[] = ['dashboard', 'analytics', 'leads', 'kanban', 'products', 'groups', 'calendar', 'team', 'forms', 'settings', 'billing'];
 
   const enabledModules: ModuleKey[] = isSuperAdmin
     ? allModuleKeys
