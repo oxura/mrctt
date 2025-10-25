@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
 import { useAppStore } from '../../store/appStore';
-import { nanoid } from '../../utils/nanoid';
+import { generateSecureId } from '../../utils/crypto';
+import { isValidEmail, isValidPhone, sanitizeFormData } from '../../utils/validation';
+import { generateBrowserFingerprint, rateLimiter, RATE_LIMITS } from '../../utils/security';
 
 export default function PublicForm() {
   const { formId } = useParams<{ formId: string }>();
@@ -54,44 +57,157 @@ export default function PublicForm() {
 function FormRenderer({ formId }: { formId: string }) {
   const { forms, addLead, company, leads } = useAppStore();
   const form = forms.find((f) => f.id === formId);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   if (!form) return null;
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    if (isSubmitting) return;
+    
+    // Rate limiting check
+    const fingerprint = generateBrowserFingerprint();
+    const rateLimitKey = `form-${formId}-${fingerprint}`;
+    
+    if (!rateLimiter.isAllowed(rateLimitKey, RATE_LIMITS.publicForm)) {
+      setErrors({ 
+        submit: 'Слишком много попыток отправки. Пожалуйста, попробуйте через минуту.' 
+      });
+      return;
+    }
+    
+    setErrors({});
+    setSubmitSuccess(false);
+
     const formData = new FormData(e.currentTarget);
-    const leadData = Object.fromEntries(formData.entries());
+    const rawData = Object.fromEntries(formData.entries());
+    const sanitizedData = sanitizeFormData(rawData) as Record<string, string | undefined>;
 
-    const statusId = company?.leadStatuses[0]?.id || 'status-new';
-    const sameStatusCount = leads.filter((lead) => lead.statusId === statusId).length;
+    const validationErrors: Record<string, string> = {};
 
-    addLead({
-      id: nanoid(),
-      companyId: company!.id,
-      createdAt: new Date().toISOString(),
-      email: (leadData.email as string) || '',
-      name: (leadData.name as string) || 'Новый лид',
-      phone: (leadData.phone as string) || '',
-      productId: form.productId,
-      statusId,
-      kanbanOrder: sameStatusCount,
-      ownerId: undefined,
-      groupId: undefined,
-      notes: [],
-      history: [],
-      source: 'public-form',
+    form.fields.forEach((field) => {
+      const value = sanitizedData[field.id];
+      
+      if (field.required && !value) {
+        validationErrors[field.id] = `${field.label} обязательно для заполнения`;
+      }
+
+      if (value && field.type === 'email' && !isValidEmail(value)) {
+        validationErrors[field.id] = 'Введите корректный email адрес';
+      }
+
+      if (value && field.type === 'phone' && !isValidPhone(value)) {
+        validationErrors[field.id] = 'Введите корректный номер телефона';
+      }
     });
 
-    alert('Спасибо! Мы свяжемся с вами.');
-    e.currentTarget.reset();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      if (!company) {
+        setErrors({ submit: 'Данные компании недоступны. Попробуйте позже.' });
+        return;
+      }
+
+      const statusId = company.leadStatuses[0]?.id || 'status-new';
+      const sameStatusCount = leads.filter((lead) => lead.statusId === statusId).length;
+
+      const nameField = form.fields.find((field) => field.type === 'text');
+      const phoneField = form.fields.find((field) => field.type === 'phone');
+      const emailField = form.fields.find((field) => field.type === 'email');
+
+      const leadName = nameField ? sanitizedData[nameField.id] : undefined;
+      const leadPhone = phoneField ? sanitizedData[phoneField.id] : undefined;
+      const leadEmail = emailField ? sanitizedData[emailField.id] : undefined;
+
+      const notes = form.fields
+        .map((field) => {
+          const value = sanitizedData[field.id];
+          if (!value) return null;
+          return `${field.label}: ${value}`;
+        })
+        .filter((value): value is string => Boolean(value));
+
+      addLead({
+        id: generateSecureId(),
+        companyId: company.id,
+        createdAt: new Date().toISOString(),
+        email: typeof leadEmail === 'string' ? leadEmail : '',
+        name: typeof leadName === 'string' && leadName.trim() ? leadName.trim() : 'Новый лид',
+        phone: typeof leadPhone === 'string' ? leadPhone : '',
+        productId: form.productId,
+        statusId,
+        kanbanOrder: sameStatusCount,
+        ownerId: undefined,
+        groupId: undefined,
+        notes,
+        history: [
+          {
+            id: generateSecureId(),
+            type: 'creation',
+            message: 'Лид создан через публичную форму',
+            createdAt: new Date().toISOString(),
+            createdBy: 'system',
+          },
+        ],
+        source: 'public-form',
+      });
+
+      rateLimiter.reset(rateLimitKey);
+
+      setSubmitSuccess(true);
+      e.currentTarget.reset();
+    } catch (error) {
+      console.error('Public form submission error', error);
+      setErrors({ submit: 'Произошла ошибка при отправке формы. Попробуйте снова.' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (submitSuccess) {
+    return (
+      <div className="space-y-4 rounded-lg bg-green-50 p-6 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+          <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900">Спасибо!</h3>
+        <p className="text-sm text-gray-600">{form.thankYouMessage}</p>
+        <Button type="button" className="w-full" onClick={() => setSubmitSuccess(false)}>
+          Отправить ещё одну заявку
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {errors.submit && (
+        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+          {errors.submit}
+        </div>
+      )}
+      
       {form.fields.map((field) => {
         if (field.type === 'select' && field.options) {
           return (
-            <Select key={field.id} label={field.label} name={field.id} required={field.required}>
+            <Select 
+              key={field.id} 
+              label={field.label} 
+              name={field.id} 
+              required={field.required}
+              error={errors[field.id]}
+            >
               <option value="">Выберите...</option>
               {field.options.map((option) => (
                 <option key={option} value={option}>
@@ -109,12 +225,13 @@ function FormRenderer({ formId }: { formId: string }) {
             name={field.id}
             required={field.required}
             type={field.type === 'text' ? 'text' : field.type}
+            error={errors[field.id]}
           />
         );
       })}
 
-      <Button type="submit" className="w-full">
-        Отправить заявку
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting ? 'Отправка...' : 'Отправить заявку'}
       </Button>
     </form>
   );

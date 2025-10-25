@@ -12,7 +12,8 @@ import Select from '../../components/common/Select';
 import Modal, { ModalFooter } from '../../components/common/Modal';
 import { useAppStore } from '../../store/appStore';
 import { Lead } from '../../types';
-import { nanoid } from '../../utils/nanoid';
+import { generateSecureId } from '../../utils/crypto';
+import { isValidEmail, isValidPhone, sanitizeString } from '../../utils/validation';
 import LeadKanban from './LeadKanban';
 
 export default function Leads() {
@@ -47,13 +48,13 @@ export default function Leads() {
     const newLead: Lead = {
       ...data,
       statusId,
-      id: nanoid(),
+      id: generateSecureId(),
       companyId: company!.id,
       createdAt: new Date().toISOString(),
       kanbanOrder: sameStatusCount,
       history: [
         {
-          id: nanoid(),
+          id: generateSecureId(),
           type: 'creation',
           message: 'Лид создан вручную',
           createdAt: new Date().toISOString(),
@@ -268,10 +269,17 @@ function AddLeadModal({ onClose, onSubmit }: AddLeadModalProps) {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) newErrors.name = 'Введите имя';
-    if (!formData.phone.trim()) newErrors.phone = 'Введите телефон';
 
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Неверный формат email';
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Введите телефон';
+    } else if (!isValidPhone(formData.phone.trim())) {
+      newErrors.phone = 'Введите корректный номер телефона';
+    }
+
+    if (formData.email) {
+      if (!isValidEmail(formData.email.trim())) {
+        newErrors.email = 'Неверный формат email';
+      }
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -280,9 +288,20 @@ function AddLeadModal({ onClose, onSubmit }: AddLeadModalProps) {
     }
 
     setErrors({});
+
+    const sanitizedName = sanitizeString(formData.name.trim());
+    const sanitizedPhone = sanitizeString(formData.phone.trim());
+    const sanitizedEmail = formData.email ? sanitizeString(formData.email.trim().toLowerCase()) : '';
+    const sanitizedSource = formData.source ? sanitizeString(formData.source.trim()) : '';
+    const sanitizedNote = note.trim() ? sanitizeString(note.trim()) : '';
+
     onSubmit({
       ...formData,
-      notes: note.trim() ? [note.trim()] : [],
+      name: sanitizedName,
+      phone: sanitizedPhone,
+      email: sanitizedEmail || undefined,
+      source: sanitizedSource || undefined,
+      notes: sanitizedNote ? [sanitizedNote] : [],
     } as Omit<Lead, 'id' | 'companyId' | 'createdAt' | 'history'>);
   };
 
