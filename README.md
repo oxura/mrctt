@@ -36,6 +36,20 @@ The system uses a **shared database, shared schema** approach with tenant_id iso
 - `lead_comments`, `lead_activities` - Lead interaction history
 - `tasks` - Reminders and follow-ups
 - `forms`, `form_submissions` - Public lead capture forms
+- `password_reset_tokens` - Password reset functionality
+
+## Pages
+
+### Public Pages
+- `/` - Landing page with product information
+- `/login` - Login page with validation
+- `/register` - Registration page with validation (email, password 8+, name, company info, terms acceptance)
+- `/forgot-password` - Password reset request page
+- `/reset-password?token=<token>` - New password creation page
+
+### Protected Pages (requires authentication)
+- `/dashboard` - Main dashboard with KPIs, activity feed, and tasks
+- `/onboarding` - Multi-step onboarding wizard for initial setup
 
 ## Project Structure
 

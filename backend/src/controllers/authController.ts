@@ -9,7 +9,7 @@ const authService = new AuthService();
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  firstName: z.string().optional(),
+  firstName: z.string().min(1),
   lastName: z.string().optional(),
   companyName: z.string().min(1),
   companySlug: z.string().min(3).regex(/^[a-z0-9-]+$/),

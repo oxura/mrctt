@@ -118,6 +118,7 @@ const Register: React.FC = () => {
               name="firstName"
               value={form.firstName}
               onChange={handleChange}
+              required
             />
           </label>
 
