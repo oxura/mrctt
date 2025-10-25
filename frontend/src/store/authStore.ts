@@ -8,6 +8,7 @@ interface AuthState {
   tenant: Tenant | null;
   isAuthenticated: boolean;
   setAuth: (payload: { token: string; user: User; tenant: Tenant }) => void;
+  updateTenant: (tenant: Tenant) => void;
   clear: () => void;
 }
 
@@ -22,6 +23,10 @@ export const useAuthStore = create<AuthState>()(
         localStorage.setItem('auth_token', token);
         localStorage.setItem('tenant_id', tenant.id);
         set({ token, user, tenant, isAuthenticated: true });
+      },
+      updateTenant: (tenant) => {
+        localStorage.setItem('tenant_id', tenant.id);
+        set((state) => ({ ...state, tenant }));
       },
       clear: () => {
         localStorage.removeItem('auth_token');

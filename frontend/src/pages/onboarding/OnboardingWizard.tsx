@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AppLayout from '../../layouts/AppLayout';
 import styles from './OnboardingWizard.module.css';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { useAuthStore } from '../../store/authStore';
+import type { TenantSettingsModules } from '../../types';
 
 const niches = [
   { id: 'courses', title: 'Онлайн-школа / Курсы', icon: '🎓' },
@@ -12,15 +14,19 @@ const niches = [
   { id: 'other', title: 'Другое', icon: '✨' },
 ];
 
-const modulePresets: Record<string, string[]> = {
+type ModuleId = 'products' | 'groups' | 'tasks' | 'team';
+
+const defaultModules: ModuleId[] = ['products', 'tasks'];
+
+const modulePresets: Record<string, ModuleId[]> = {
   courses: ['products', 'groups', 'tasks', 'team'],
   services: ['products', 'tasks', 'team'],
   medicine: ['products', 'tasks', 'team'],
   tourism: ['products', 'groups', 'tasks', 'team'],
-  other: ['products', 'tasks'],
+  other: [...defaultModules],
 };
 
-const moduleOptions = [
+const moduleOptions: { id: ModuleId; label: string }[] = [
   { id: 'products', label: 'Модуль: Продукты' },
   { id: 'groups', label: 'Модуль: Группы / Потоки' },
   { id: 'tasks', label: 'Модуль: Задачи / Календарь' },
@@ -36,22 +42,61 @@ const OnboardingWizard: React.FC = () => {
     city: '',
   });
   const [selectedNiche, setSelectedNiche] = useState<string | null>(null);
-  const [modules, setModules] = useState<string[]>(['products', 'tasks']);
+  const [modules, setModules] = useState<ModuleId[]>(defaultModules);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const tenant = useAuthStore((state) => state.tenant);
+  const updateTenant = useAuthStore((state) => state.updateTenant);
+  const isPrefilled = useRef(false);
+
+  useEffect(() => {
+    if (tenant && !isPrefilled.current) {
+      isPrefilled.current = true;
+      setCompanyInfo({
+        name: tenant.name || '',
+        logo: tenant.logo_url || '',
+        country: tenant.country || '',
+        city: tenant.city || '',
+      });
+
+      if (tenant.industry) {
+        setSelectedNiche(tenant.industry);
+      }
+
+      const modulesSettings = tenant.settings?.modules as TenantSettingsModules | undefined;
+      if (modulesSettings && typeof modulesSettings === 'object') {
+        const activeModules = moduleOptions
+          .filter((option) => modulesSettings[option.id] === true)
+          .map((option) => option.id);
+
+        setModules(activeModules.length ? activeModules : [...defaultModules]);
+      } else if (tenant.industry && modulePresets[tenant.industry]) {
+        setModules([...modulePresets[tenant.industry]]);
+      } else {
+        setModules([...defaultModules]);
+      }
+    }
+  }, [tenant]);
 
   const handleNext = () => {
     if (step === 1) {
-      if (!companyInfo.name) {
+      const trimmedName = companyInfo.name.trim();
+      if (!trimmedName) {
         setError('Название компании обязательно');
         return;
       }
+
+      if (trimmedName !== companyInfo.name) {
+        setCompanyInfo((prev) => ({ ...prev, name: trimmedName }));
+      }
     }
+
     if (step === 2 && !selectedNiche) {
       setError('Выберите нишу');
       return;
     }
+
     setError(null);
     setStep((prev) => Math.min(prev + 1, 3));
   };
@@ -62,18 +107,44 @@ const OnboardingWizard: React.FC = () => {
   };
 
   const handleFinish = async () => {
+    if (modules.length === 0) {
+      setError('Выберите хотя бы один модуль');
+      return;
+    }
+
+    const trimmedName = companyInfo.name.trim();
+    const trimmedCountry = companyInfo.country.trim();
+    const trimmedCity = companyInfo.city.trim();
+
+    if (!trimmedName) {
+      setError('Название компании обязательно');
+      setStep(1);
+      return;
+    }
+
+    setCompanyInfo((prev) => ({
+      ...prev,
+      name: trimmedName,
+      country: trimmedCountry,
+      city: trimmedCity,
+    }));
+
     setLoading(true);
     setError(null);
 
     try {
-      await api.patch('/api/v1/tenants/current/onboarding', {
-        name: companyInfo.name || undefined,
+      const response = await api.patch('/api/v1/tenants/current/onboarding', {
+        name: trimmedName,
         logo_url: companyInfo.logo || null,
-        country: companyInfo.country || undefined,
-        city: companyInfo.city || undefined,
+        country: trimmedCountry || undefined,
+        city: trimmedCity || undefined,
         industry: selectedNiche || undefined,
         modules,
       });
+
+      if (response.data?.data?.tenant) {
+        updateTenant(response.data.data.tenant);
+      }
 
       navigate('/dashboard');
     } catch (err: unknown) {
@@ -98,19 +169,41 @@ const OnboardingWizard: React.FC = () => {
 
   const handleNicheSelect = (niche: string) => {
     setSelectedNiche(niche);
-    setModules(modulePresets[niche] || ['products', 'tasks']);
+    const presetModules = modulePresets[niche];
+    setModules(presetModules ? [...presetModules] : [...defaultModules]);
     setError(null);
   };
 
-  const toggleModule = (moduleId: string) => {
-    setModules((prev) =>
-      prev.includes(moduleId) ? prev.filter((item) => item !== moduleId) : [...prev, moduleId]
-    );
+
+  const toggleModule = (moduleId: ModuleId) => {
+    const nextModules = modules.includes(moduleId)
+      ? modules.filter((item) => item !== moduleId)
+      : [...modules, moduleId];
+
+    setModules(nextModules);
+
+    if (error && nextModules.length > 0) {
+      setError(null);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const maxSize = 2 * 1024 * 1024;
+      if (file.size > maxSize) {
+        setError('Размер файла не должен превышать 2 МБ');
+        e.target.value = '';
+        return;
+      }
+
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        setError('Допустимые форматы: JPEG, PNG, GIF, WebP');
+        e.target.value = '';
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         handleCompanyInfoChange('logo', reader.result as string);
@@ -214,16 +307,23 @@ const OnboardingWizard: React.FC = () => {
             <h2>Включите нужные модули</h2>
             <p>Вы всегда сможете изменить это в настройках.</p>
             <div className={styles.moduleList}>
-              {moduleOptions.map((module) => (
-                <label key={module.id} className={styles.moduleItem}>
-                  <input
-                    type="checkbox"
-                    checked={modules.includes(module.id)}
-                    onChange={() => toggleModule(module.id)}
-                  />
-                  <span>{module.label}</span>
-                </label>
-              ))}
+              {moduleOptions.map((module) => {
+                const isActive = modules.includes(module.id);
+                return (
+                  <label
+                    key={module.id}
+                    className={`${styles.moduleItem} ${isActive ? styles.moduleItemActive : ''}`}
+                  >
+                    <span className={styles.moduleLabel}>{module.label}</span>
+                    <input
+                      type="checkbox"
+                      checked={isActive}
+                      onChange={() => toggleModule(module.id)}
+                    />
+                    <span className={styles.toggleSwitch}></span>
+                  </label>
+                );
+              })}
             </div>
           </section>
         )}
