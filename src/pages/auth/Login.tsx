@@ -8,8 +8,9 @@ import { isValidEmail, sanitizeString } from '../../utils/validation';
 import { rateLimiter, RATE_LIMITS, generateBrowserFingerprint } from '../../utils/security';
 
 const SUPERADMIN_EMAIL = (import.meta.env.VITE_SUPERADMIN_EMAIL || 'superadmin@ecosystem.app').toLowerCase();
-const SUPERADMIN_PASSWORD = import.meta.env.VITE_SUPERADMIN_PASSWORD || 'SuperAdmin#2024!';
-const DEMO_ACCOUNT_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD || 'Demo#Access2024!';
+const DEMO_OWNER_EMAIL = 'owner@example.com';
+// Demo mode: allow any password for demo accounts (bypass password validation)
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE !== 'false'; // enabled by default
 
 export default function Login() {
   const navigate = useNavigate();
@@ -19,6 +20,47 @@ export default function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleDemoLogin = (email: string) => {
+    const sanitizedEmail = sanitizeString(email.trim().toLowerCase());
+    setError('');
+    setFormData({ email, password: 'demo12345' });
+
+    if (!DEMO_MODE) {
+      setError('Демо-режим отключен. Обратитесь к администратору.');
+      return;
+    }
+
+    const resetRateLimit = () => {
+      rateLimiter.reset(`login-${generateBrowserFingerprint()}`);
+    };
+
+    if (sanitizedEmail === SUPERADMIN_EMAIL) {
+      login({
+        id: 'platform-owner',
+        name: 'Platform Owner',
+        email: sanitizedEmail,
+        role: 'superadmin',
+        onboardingCompleted: true,
+      });
+      resetRateLimit();
+      navigate('/superadmin');
+      return;
+    }
+
+    if (demoUser && sanitizedEmail === demoUser.email.toLowerCase()) {
+      login(demoUser);
+      resetRateLimit();
+      if (demoUser.onboardingCompleted) {
+        navigate('/');
+      } else {
+        navigate('/onboarding');
+      }
+      return;
+    }
+
+    setError('Demo аккаунт не найден.');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +88,12 @@ export default function Login() {
       return;
     }
 
-    if (formData.password.length < 8) {
+    const sanitizedEmail = sanitizeString(formData.email.trim().toLowerCase());
+    const isDemoSuperAdmin = DEMO_MODE && sanitizedEmail === SUPERADMIN_EMAIL;
+    const isDemoOwner = DEMO_MODE && sanitizedEmail === DEMO_OWNER_EMAIL;
+    const isDemoAccount = isDemoSuperAdmin || isDemoOwner;
+
+    if (formData.password.length < 8 && !isDemoAccount) {
       setError('Неверный email или пароль');
       return;
     }
@@ -54,10 +101,10 @@ export default function Login() {
     setIsSubmitting(true);
 
     try {
-      const sanitizedEmail = sanitizeString(formData.email.trim().toLowerCase());
+      // Demo mode: bypass password validation for demo accounts
 
-      // Demo authentication - replace with real backend authentication
-      if (sanitizedEmail === SUPERADMIN_EMAIL && formData.password === SUPERADMIN_PASSWORD) {
+      // Super Admin Demo Login
+      if (isDemoSuperAdmin) {
         login({
           id: 'platform-owner',
           name: 'Platform Owner',
@@ -70,7 +117,8 @@ export default function Login() {
         return;
       }
 
-      if (demoUser && sanitizedEmail === demoUser.email.toLowerCase() && formData.password === DEMO_ACCOUNT_PASSWORD) {
+      // Owner Demo Login
+      if (demoUser && isDemoOwner) {
         login(demoUser);
         rateLimiter.reset(rateLimitKey);
         if (demoUser.onboardingCompleted) {
@@ -81,6 +129,7 @@ export default function Login() {
         return;
       }
 
+      // If demo mode is disabled or not a demo account, show error
       setError('Неверный email или пароль');
     } catch (err) {
       console.error('Login error:', err);
@@ -137,6 +186,37 @@ export default function Login() {
               Забыли пароль?
             </a>
           </div>
+
+          {DEMO_MODE && (
+            <div className="mt-8 border-t border-gray-200 pt-6">
+              <p className="mb-3 text-center text-sm font-medium text-gray-700">
+                Попробуйте демо-версию
+              </p>
+              <div className="space-y-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  className="w-full"
+                  onClick={() => handleDemoLogin(DEMO_OWNER_EMAIL)}
+                >
+                  Войти как Владелец
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  className="w-full"
+                  onClick={() => handleDemoLogin(SUPERADMIN_EMAIL)}
+                >
+                  Войти как Суперадмин
+                </Button>
+              </div>
+              <p className="mt-3 text-center text-xs text-gray-500">
+                Демо-аккаунты: введите любой пароль, например «demo12345»
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
