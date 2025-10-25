@@ -8,6 +8,7 @@ import Leads from './pages/leads/Leads';
 import LeadDetail from './pages/leads/LeadDetail';
 import Products from './pages/products/Products';
 import Calendar from './pages/calendar/Calendar';
+import Analytics from './pages/analytics/Analytics';
 import Team from './pages/team/Team';
 import Settings from './pages/settings/Settings';
 import Billing from './pages/billing/Billing';
@@ -58,6 +59,7 @@ function App() {
         <Route path="/forms/:formId/public" element={<PublicForm />} />
         
         <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+        <Route path="/analytics" element={<PrivateRoute allowedRoles={['owner', 'admin']}><Analytics /></PrivateRoute>} />
         <Route path="/leads" element={<PrivateRoute><Leads /></PrivateRoute>} />
         <Route path="/leads/:id" element={<PrivateRoute><LeadDetail /></PrivateRoute>} />
         <Route path="/products" element={<PrivateRoute allowedRoles={['owner', 'admin']}><Products /></PrivateRoute>} />

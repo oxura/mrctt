@@ -41,11 +41,16 @@ export default function Leads() {
   }, [leads, searchQuery, statusFilter, productFilter, ownerFilter]);
 
   const handleAddLead = (data: Omit<Lead, 'id' | 'companyId' | 'createdAt' | 'history'>) => {
+    const statusId = data.statusId || company?.leadStatuses[0]?.id || 'status-new';
+    const sameStatusCount = leads.filter((lead) => lead.statusId === statusId).length;
+
     const newLead: Lead = {
       ...data,
+      statusId,
       id: nanoid(),
       companyId: company!.id,
       createdAt: new Date().toISOString(),
+      kanbanOrder: sameStatusCount,
       history: [
         {
           id: nanoid(),
