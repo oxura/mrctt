@@ -69,19 +69,22 @@ export default function Analytics() {
       : Array.from({ length: dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90 }, (_, i) => getDaysAgo(i)).reverse();
 
     return days.map(day => {
+      const dayKey = format(day, 'yyyy-MM-dd');
       const dayLeads = filteredLeads.filter(lead => {
         const leadDate = new Date(lead.createdAt);
-        return leadDate.toDateString() === day.toDateString();
+        return format(leadDate, 'yyyy-MM-dd') === dayKey;
+      });
+
+      const dayTasks = tasks.filter(task => {
+        const taskDate = new Date(task.dueDate);
+        return format(taskDate, 'yyyy-MM-dd') === dayKey;
       });
 
       return {
         date: format(day, 'dd MMM', { locale: ru }),
         fullDate: day,
         leads: dayLeads.length,
-        tasks: tasks.filter(task => {
-          const taskDate = new Date(task.dueDate);
-          return taskDate.toDateString() === day.toDateString();
-        }).length,
+        tasks: dayTasks.length,
       };
     });
   }, [filteredLeads, tasks, dateRange]);
@@ -115,7 +118,7 @@ export default function Analytics() {
   }, [filteredLeads, products]);
 
   const conversionRate = useMemo(() => {
-    const successStatus = company?.leadStatuses.find(s => s.name === 'Успех');
+    const successStatus = company?.leadStatuses.find(s => s.type === 'success');
     if (!successStatus) return 0;
     const successCount = filteredLeads.filter(lead => lead.statusId === successStatus.id).length;
     return filteredLeads.length > 0 ? ((successCount / filteredLeads.length) * 100).toFixed(1) : 0;

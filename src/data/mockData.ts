@@ -2,11 +2,11 @@ import { ActivityItem, BillingPlan, Company, FormField, Lead, LeadForm, LeadStat
 import { nanoid } from '../utils/nanoid';
 
 export const baseLeadStatuses: LeadStatus[] = [
-  { id: 'status-new', name: 'Новый', order: 1, color: '#2563eb' },
-  { id: 'status-inwork', name: 'В работе', order: 2, color: '#6366f1' },
-  { id: 'status-waiting', name: 'Ждет оплаты', order: 3, color: '#f59e0b' },
-  { id: 'status-success', name: 'Успех', order: 4, color: '#10b981' },
-  { id: 'status-failed', name: 'Отказ', order: 5, color: '#ef4444' },
+  { id: 'status-new', name: 'Новый', order: 1, color: '#2563eb', type: 'new' },
+  { id: 'status-inwork', name: 'В работе', order: 2, color: '#6366f1', type: 'inwork' },
+  { id: 'status-waiting', name: 'Ждет оплаты', order: 3, color: '#f59e0b', type: 'waiting' },
+  { id: 'status-success', name: 'Успех', order: 4, color: '#10b981', type: 'success' },
+  { id: 'status-failed', name: 'Отказ', order: 5, color: '#ef4444', type: 'failed' },
 ];
 
 export const defaultModules: ModuleToggle[] = [
@@ -28,7 +28,7 @@ export const mockCompany = (overrides?: Partial<Company>): Company => ({
   name: 'Экосистема заявок',
   country: 'Россия',
   city: 'Москва',
-  niche: 'Курсы',
+  niche: 'Онлайн-школа/Курсы',
   modules: defaultModules.map((mod) => ({ ...mod, description: '' })),
   leadStatuses: baseLeadStatuses,
   ...overrides,

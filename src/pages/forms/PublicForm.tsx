@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -61,16 +61,15 @@ function FormRenderer({ formId }: { formId: string }) {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const fingerprint = useMemo(() => generateBrowserFingerprint(), []);
+  const rateLimitKey = useMemo(() => `form-${formId}-${fingerprint}`, [formId, fingerprint]);
+
   if (!form) return null;
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (isSubmitting) return;
-    
-    // Rate limiting check
-    const fingerprint = generateBrowserFingerprint();
-    const rateLimitKey = `form-${formId}-${fingerprint}`;
     
     if (!rateLimiter.isAllowed(rateLimitKey, RATE_LIMITS.publicForm)) {
       setErrors({ 
@@ -140,9 +139,9 @@ function FormRenderer({ formId }: { formId: string }) {
         id: generateSecureId(),
         companyId: company.id,
         createdAt: new Date().toISOString(),
-        email: typeof leadEmail === 'string' ? leadEmail : '',
+        email: typeof leadEmail === 'string' && leadEmail.trim() ? leadEmail.trim() : undefined,
         name: typeof leadName === 'string' && leadName.trim() ? leadName.trim() : 'Новый лид',
-        phone: typeof leadPhone === 'string' ? leadPhone : '',
+        phone: typeof leadPhone === 'string' && leadPhone.trim() ? leadPhone.trim() : undefined,
         productId: form.productId,
         statusId,
         kanbanOrder: sameStatusCount,
@@ -161,7 +160,7 @@ function FormRenderer({ formId }: { formId: string }) {
         source: 'public-form',
       });
 
-      rateLimiter.reset(rateLimitKey);
+      rateLimiter.recordSuccess(rateLimitKey);
 
       setSubmitSuccess(true);
       e.currentTarget.reset();

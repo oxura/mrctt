@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import Input from '../../components/common/Input';
@@ -10,6 +10,9 @@ import { rateLimiter, RATE_LIMITS, generateBrowserFingerprint } from '../../util
 export default function SignUp() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
+
+  const fingerprint = useMemo(() => generateBrowserFingerprint(), []);
+  const rateLimitKey = useMemo(() => `signup-${fingerprint}`, [fingerprint]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -25,10 +28,6 @@ export default function SignUp() {
     e.preventDefault();
     
     if (isSubmitting) return;
-
-    // Rate limiting check
-    const fingerprint = generateBrowserFingerprint();
-    const rateLimitKey = `signup-${fingerprint}`;
     
     if (!rateLimiter.isAllowed(rateLimitKey, RATE_LIMITS.signup)) {
       setErrors({ submit: 'Слишком много попыток регистрации. Попробуйте через час.' });

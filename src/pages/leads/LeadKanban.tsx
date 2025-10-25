@@ -20,6 +20,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Lead } from '../../types';
 import { useAppStore } from '../../store/appStore';
+import { generateSecureId } from '../../utils/crypto';
 
 interface LeadKanbanProps {
   leads: Lead[];
@@ -164,7 +165,7 @@ export default function LeadKanban({ leads }: LeadKanbanProps) {
 
     if (oldStatus && newStatus && oldStatus.id !== newStatus.id) {
       addLeadHistory(activeLeadId, {
-        id: `history-${Date.now()}`,
+        id: generateSecureId(),
         type: 'status_change',
         message: `Статус изменен: ${oldStatus.name} → ${newStatus.name}`,
         createdAt: new Date().toISOString(),
