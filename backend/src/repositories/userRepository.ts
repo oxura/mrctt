@@ -59,6 +59,13 @@ export class UserRepository {
     ]);
   }
 
+  async updatePassword(userId: string, passwordHash: string, client: PoolClientLike = pool): Promise<void> {
+    await client.query('UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [
+      passwordHash,
+      userId,
+    ]);
+  }
+
   async listByTenant(tenantId: string, client: PoolClientLike = pool): Promise<User[]> {
     const result = await client.query<User>(
       'SELECT * FROM users WHERE tenant_id = $1 ORDER BY created_at DESC',

@@ -137,6 +137,28 @@
   font-size: 14px;
 }
 
+.successMessage {
+  background-color: #d1fae5;
+  color: #065f46;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.backLink {
+  display: inline-block;
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 16px;
+  padding: 12px 0;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
 .footer {
   margin-top: 24px;
   display: flex;

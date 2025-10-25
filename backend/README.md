@@ -59,7 +59,7 @@ Server runs at `http://localhost:5000`
 
 ## API Documentation
 
-### Authentication
+### Authentication Endpoints
 
 #### Register
 ```http
@@ -88,6 +88,28 @@ Content-Type: application/json
   "email": "user@example.com",
   "password": "password123",
   "tenantSlug": "acme"
+}
+```
+
+#### Forgot Password
+```http
+POST /api/v1/auth/password/forgot
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "tenantSlug": "acme"
+}
+```
+
+#### Reset Password
+```http
+POST /api/v1/auth/password/reset
+Content-Type: application/json
+
+{
+  "token": "reset-token",
+  "password": "newStrongPassword"
 }
 ```
 
