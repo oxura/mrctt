@@ -3,6 +3,9 @@ import { AppError } from '../utils/appError';
 import { verifyToken } from '../utils/jwt';
 import { pool } from '../db/client';
 import { User } from '../types/models';
+import { PermissionRepository } from '../repositories/permissionRepository';
+
+const permissionRepo = new PermissionRepository();
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -26,6 +29,9 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
     req.user = result.rows[0];
     req.tenantId = result.rows[0].tenant_id || undefined;
+
+    const permissions = await permissionRepo.getPermissionsByUserId(req.user.id);
+    req.permissions = permissions.map((permission) => permission.name);
 
     next();
   } catch (error) {

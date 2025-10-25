@@ -4,19 +4,20 @@ import {
   listTenants,
   updateCurrentTenantOnboarding,
 } from '../controllers/tenantController';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 import { tenantGuard } from '../middleware/tenant';
+import { requirePermission } from '../middleware/rbac';
 
 const router = Router();
 
-router.get('/current', authenticate, tenantGuard, getCurrentTenant);
+router.get('/current', authenticate, tenantGuard, requirePermission('tenants:read'), getCurrentTenant);
 router.patch(
   '/current/onboarding',
   authenticate,
   tenantGuard,
-  requireRole('owner', 'admin'),
+  requirePermission('tenants:update'),
   updateCurrentTenantOnboarding
 );
-router.get('/', authenticate, requireRole('platform_owner'), listTenants);
+router.get('/', authenticate, requirePermission('tenants:list'), listTenants);
 
 export default router;

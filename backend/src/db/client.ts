@@ -30,5 +30,5 @@ export const withTransaction = async <T>(callback: (client: PoolClientLike) => P
 };
 
 export interface PoolClientLike {
-  query: (text: string, params?: unknown[]) => Promise<{ rows: any[]; rowCount: number }>;
+  query<T = any>(text: string, params?: unknown[]): Promise<{ rows: T[]; rowCount: number }>;
 }

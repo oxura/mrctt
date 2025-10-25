@@ -1,5 +1,5 @@
 import { pool, PoolClientLike } from '../db/client';
-import { User } from '../types/models';
+import { User, UserRole } from '../types/models';
 
 export class UserRepository {
   async findById(id: string, client: PoolClientLike = pool): Promise<User | null> {
@@ -36,10 +36,19 @@ export class UserRepository {
       password_hash: string;
       first_name?: string;
       last_name?: string;
-      role: string;
+      role?: UserRole;
     },
     client: PoolClientLike = pool
   ): Promise<User> {
+    let role = data.role ?? 'manager';
+
+    if (data.tenant_id) {
+      const isFirstUser = await this.isFirstUserInTenant(data.tenant_id, client);
+      if (isFirstUser) {
+        role = 'owner';
+      }
+    }
+
     const result = await client.query(
       `INSERT INTO users (tenant_id, email, password_hash, first_name, last_name, role)
        VALUES ($1, $2, $3, $4, $5, $6)
@@ -50,7 +59,7 @@ export class UserRepository {
         data.password_hash,
         data.first_name || null,
         data.last_name || null,
-        data.role,
+        role,
       ]
     );
     return result.rows[0] as User;
@@ -75,5 +84,18 @@ export class UserRepository {
       [tenantId]
     );
     return result.rows as User[];
+  }
+
+  async countByTenant(tenantId: string, client: PoolClientLike = pool): Promise<number> {
+    const result = await client.query<{ count: string }>(
+      'SELECT COUNT(*) as count FROM users WHERE tenant_id = $1',
+      [tenantId]
+    );
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  async isFirstUserInTenant(tenantId: string, client: PoolClientLike = pool): Promise<boolean> {
+    const count = await this.countByTenant(tenantId, client);
+    return count === 0;
   }
 }
