@@ -41,11 +41,14 @@ export interface Company {
   leadStatuses: LeadStatus[];
 }
 
+export type LeadStatusType = 'new' | 'inwork' | 'waiting' | 'success' | 'failed' | 'other';
+
 export interface LeadStatus {
   id: string;
   name: string;
   order: number;
   color: string;
+  type?: LeadStatusType;
 }
 
 export interface Product {
@@ -71,7 +74,7 @@ export interface GroupFlow {
 export interface Lead {
   id: string;
   name: string;
-  phone: string;
+  phone?: string;
   email?: string;
   productId?: string;
   groupId?: string;

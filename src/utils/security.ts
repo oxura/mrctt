@@ -69,9 +69,15 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
  */
 class RateLimiter {
   private requests: Map<string, number[]> = new Map();
+  private cooldowns: Map<string, number> = new Map();
 
   isAllowed(key: string, config: RateLimitConfig): boolean {
     const now = Date.now();
+    const cooldownUntil = this.cooldowns.get(key);
+    if (cooldownUntil && cooldownUntil > now) {
+      return false;
+    }
+
     const timestamps = this.requests.get(key) || [];
     
     // Remove old timestamps
@@ -91,6 +97,12 @@ class RateLimiter {
 
   reset(key: string): void {
     this.requests.delete(key);
+    this.cooldowns.delete(key);
+  }
+
+  recordSuccess(key: string, cooldownMs = 30000): void {
+    const now = Date.now();
+    this.cooldowns.set(key, now + cooldownMs);
   }
 
   cleanup(): void {
@@ -103,6 +115,12 @@ class RateLimiter {
         this.requests.delete(key);
       } else {
         this.requests.set(key, validTimestamps);
+      }
+    }
+
+    for (const [key, until] of this.cooldowns.entries()) {
+      if (until <= now) {
+        this.cooldowns.delete(key);
       }
     }
   }
