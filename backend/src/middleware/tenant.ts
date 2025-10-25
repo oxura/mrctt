@@ -45,7 +45,7 @@ export const tenantGuard = async (req: Request, res: Response, next: NextFunctio
       throw new AppError('Unable to resolve tenant context', 400);
     }
 
-    const tenantResult = await pool.query<Tenant>(
+    const tenantResult = await pool.query(
       'SELECT * FROM tenants WHERE (id::text = $1 OR slug = $1) AND is_active = true',
       [req.tenantId]
     );
@@ -54,7 +54,7 @@ export const tenantGuard = async (req: Request, res: Response, next: NextFunctio
       throw new AppError('Tenant not found or inactive', 404);
     }
 
-    const tenant = tenantResult.rows[0];
+    const tenant = tenantResult.rows[0] as Tenant;
 
     // Replace tenantId with canonical ID for downstream usage
     req.tenantId = tenant.id;

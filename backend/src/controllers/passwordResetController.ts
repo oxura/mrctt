@@ -23,7 +23,7 @@ export const requestPasswordReset = asyncHandler(async (req: Request, res: Respo
     throw new AppError('Validation failed', 400, parsed.error.flatten().fieldErrors);
   }
 
-  const result = await passwordResetService.requestPasswordReset(
+  await passwordResetService.requestPasswordReset(
     parsed.data.email,
     parsed.data.tenantSlug
   );
@@ -31,7 +31,6 @@ export const requestPasswordReset = asyncHandler(async (req: Request, res: Respo
   res.status(200).json({
     status: 'success',
     message: 'If the email exists, a password reset link has been sent',
-    data: result,
   });
 });
 
@@ -42,11 +41,10 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
     throw new AppError('Validation failed', 400, parsed.error.flatten().fieldErrors);
   }
 
-  const result = await passwordResetService.resetPassword(parsed.data.token, parsed.data.password);
+  await passwordResetService.resetPassword(parsed.data.token, parsed.data.password);
 
   res.status(200).json({
     status: 'success',
     message: 'Password has been reset successfully',
-    data: result,
   });
 });

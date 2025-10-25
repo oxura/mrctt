@@ -22,10 +22,11 @@ async function ensureMigrationsTable() {
 }
 
 async function getAppliedMigrations(): Promise<string[]> {
-  const result = await pool.query<Migration>(
+  const result = await pool.query(
     'SELECT name FROM migrations ORDER BY id ASC'
   );
-  return result.rows.map((row) => row.name);
+  const rows = result.rows as Migration[];
+  return rows.map((row) => row.name);
 }
 
 async function applyMigration(filename: string) {

@@ -4,6 +4,7 @@ import { generateToken } from '../utils/jwt';
 import { withTransaction } from '../db/client';
 import { UserRepository } from '../repositories/userRepository';
 import { TenantRepository } from '../repositories/tenantRepository';
+import { emailService } from './emailService';
 
 interface RegisterData {
   email: string;
@@ -33,7 +34,7 @@ export class AuthService {
   }
 
   async register(data: RegisterData) {
-    const normalizedSlug = data.companySlug.toLowerCase();
+    const normalizedSlug = data.companySlug.trim().toLowerCase();
 
     const existingTenant = await this.tenantRepo.findBySlug(normalizedSlug);
 
@@ -47,7 +48,7 @@ export class AuthService {
       throw new AppError('Email is already in use', 409);
     }
 
-    return withTransaction(async (client) => {
+    const result = await withTransaction(async (client) => {
       const tenant = await this.tenantRepo.create(
         {
           name: data.companyName,
@@ -87,6 +88,14 @@ export class AuthService {
         token,
       };
     });
+
+    await emailService.sendWelcomeEmail(
+      result.user.email,
+      result.user.first_name ?? undefined,
+      result.tenant.name
+    );
+
+    return result;
   }
 
   async login(data: LoginData) {

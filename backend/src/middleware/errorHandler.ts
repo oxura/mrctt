@@ -20,11 +20,16 @@ export const errorHandler = (
       userId: (req as any).userId,
     });
 
-    return res.status(error.statusCode).json({
+    const response: any = {
       status: 'error',
       message: error.message,
-      ...(error.details && { details: error.details }),
-    });
+    };
+
+    if (error.details) {
+      response.details = error.details;
+    }
+
+    return res.status(error.statusCode).json(response);
   }
 
   logger.error('Unexpected error:', {
@@ -40,11 +45,16 @@ export const errorHandler = (
       ? 'Internal server error'
       : error.message || 'Something went wrong';
 
-  return res.status(statusCode).json({
+  const response: any = {
     status: 'error',
     message,
-    ...(env.NODE_ENV !== 'production' && { stack: error.stack }),
-  });
+  };
+
+  if (env.NODE_ENV !== 'production') {
+    response.stack = error.stack;
+  }
+
+  return res.status(statusCode).json(response);
 };
 
 export const notFoundHandler = (req: Request, res: Response) => {

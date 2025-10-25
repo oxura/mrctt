@@ -3,27 +3,30 @@ import { User } from '../types/models';
 
 export class UserRepository {
   async findById(id: string, client: PoolClientLike = pool): Promise<User | null> {
-    const result = await client.query<User>(
+    const result = await client.query(
       'SELECT * FROM users WHERE id = $1',
       [id]
     );
-    return result.rows[0] || null;
+    const rows = result.rows as User[];
+    return rows[0] || null;
   }
 
   async findByEmail(email: string, tenantId: string, client: PoolClientLike = pool): Promise<User | null> {
-    const result = await client.query<User>(
+    const result = await client.query(
       'SELECT * FROM users WHERE lower(email) = lower($1) AND tenant_id = $2',
       [email, tenantId]
     );
-    return result.rows[0] || null;
+    const rows = result.rows as User[];
+    return rows[0] || null;
   }
 
   async findByEmailGlobal(email: string, client: PoolClientLike = pool): Promise<User | null> {
-    const result = await client.query<User>(
+    const result = await client.query(
       'SELECT * FROM users WHERE lower(email) = lower($1) LIMIT 1',
       [email]
     );
-    return result.rows[0] || null;
+    const rows = result.rows as User[];
+    return rows[0] || null;
   }
 
   async create(
@@ -37,7 +40,7 @@ export class UserRepository {
     },
     client: PoolClientLike = pool
   ): Promise<User> {
-    const result = await client.query<User>(
+    const result = await client.query(
       `INSERT INTO users (tenant_id, email, password_hash, first_name, last_name, role)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
@@ -50,7 +53,7 @@ export class UserRepository {
         data.role,
       ]
     );
-    return result.rows[0];
+    return result.rows[0] as User;
   }
 
   async updateLastLogin(userId: string, client: PoolClientLike = pool): Promise<void> {
@@ -67,10 +70,10 @@ export class UserRepository {
   }
 
   async listByTenant(tenantId: string, client: PoolClientLike = pool): Promise<User[]> {
-    const result = await client.query<User>(
+    const result = await client.query(
       'SELECT * FROM users WHERE tenant_id = $1 ORDER BY created_at DESC',
       [tenantId]
     );
-    return result.rows;
+    return result.rows as User[];
   }
 }
