@@ -69,7 +69,6 @@ export class AuthService {
           password_hash: passwordHash,
           first_name: data.firstName,
           last_name: data.lastName,
-          role: 'owner',
         },
         client
       );
