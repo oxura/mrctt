@@ -4,6 +4,12 @@ import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
+import { isValidEmail, sanitizeString } from '../../utils/validation';
+import { rateLimiter, RATE_LIMITS, generateBrowserFingerprint } from '../../utils/security';
+
+const SUPERADMIN_EMAIL = (import.meta.env.VITE_SUPERADMIN_EMAIL || 'superadmin@ecosystem.app').toLowerCase();
+const SUPERADMIN_PASSWORD = import.meta.env.VITE_SUPERADMIN_PASSWORD || 'SuperAdmin#2024!';
+const DEMO_ACCOUNT_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD || 'Demo#Access2024!';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -12,41 +18,76 @@ export default function Login() {
 
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.email || !formData.password) {
+    if (isSubmitting) return;
+
+    // Rate limiting check
+    const fingerprint = generateBrowserFingerprint();
+    const rateLimitKey = `login-${fingerprint}`;
+    
+    if (!rateLimiter.isAllowed(rateLimitKey, RATE_LIMITS.login)) {
+      setError('Слишком много попыток входа. Попробуйте через 15 минут.');
+      return;
+    }
+
+    setError('');
+
+    if (!formData.email.trim() || !formData.password) {
       setError('Введите email и пароль');
       return;
     }
 
-    if (formData.email === 'superadmin@ecosystem.app') {
-      login(
-        {
+    if (!isValidEmail(formData.email)) {
+      setError('Введите корректный email адрес');
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError('Неверный email или пароль');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const sanitizedEmail = sanitizeString(formData.email.trim().toLowerCase());
+
+      // Demo authentication - replace with real backend authentication
+      if (sanitizedEmail === SUPERADMIN_EMAIL && formData.password === SUPERADMIN_PASSWORD) {
+        login({
           id: 'platform-owner',
           name: 'Platform Owner',
-          email: formData.email,
+          email: sanitizedEmail,
           role: 'superadmin',
           onboardingCompleted: true,
-        },
-        'superadmin-token'
-      );
-      navigate('/superadmin');
-      return;
-    }
-
-    if (demoUser && formData.email === demoUser.email) {
-      login(demoUser, 'demo-token');
-      if (demoUser.onboardingCompleted) {
-        navigate('/');
-      } else {
-        navigate('/onboarding');
+        });
+        rateLimiter.reset(rateLimitKey);
+        navigate('/superadmin');
+        return;
       }
-      return;
-    }
 
-    setError('Неверный email или пароль');
+      if (demoUser && sanitizedEmail === demoUser.email.toLowerCase() && formData.password === DEMO_ACCOUNT_PASSWORD) {
+        login(demoUser);
+        rateLimiter.reset(rateLimitKey);
+        if (demoUser.onboardingCompleted) {
+          navigate('/');
+        } else {
+          navigate('/onboarding');
+        }
+        return;
+      }
+
+      setError('Неверный email или пароль');
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Произошла ошибка при входе. Попробуйте снова.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -64,6 +105,7 @@ export default function Login() {
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              autoComplete="email"
               required
             />
 
@@ -72,13 +114,18 @@ export default function Login() {
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              autoComplete="current-password"
               required
             />
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && (
+              <p className="text-sm text-red-600" role="alert">
+                {error}
+              </p>
+            )}
 
-            <Button type="submit" size="lg" className="w-full">
-              Войти
+            <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Вход...' : 'Войти'}
             </Button>
           </form>
 

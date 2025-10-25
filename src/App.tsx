@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import SignUp from './pages/auth/SignUp';
@@ -19,9 +20,19 @@ import MainLayout from './components/layout/MainLayout';
 import { Role } from './types';
 
 function PrivateRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: Role[] }) {
-  const { isAuthenticated, user } = useAuthStore();
-  
-  if (!isAuthenticated) {
+  const { isAuthenticated, user, sessionExpiresAt, logout } = useAuthStore();
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    if (!sessionExpiresAt || sessionExpiresAt <= Date.now()) {
+      logout();
+    }
+  }, [isAuthenticated, sessionExpiresAt, logout]);
+
+  const hasActiveSession = Boolean(isAuthenticated && sessionExpiresAt && sessionExpiresAt > Date.now());
+
+  if (!hasActiveSession) {
     return <Navigate to="/login" replace />;
   }
   
@@ -37,7 +48,15 @@ function PrivateRoute({ children, allowedRoles }: { children: React.ReactNode; a
 }
 
 function App() {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, sessionExpiresAt, logout } = useAuthStore();
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    if (!sessionExpiresAt || sessionExpiresAt <= Date.now()) {
+      logout();
+    }
+  }, [isAuthenticated, sessionExpiresAt, logout]);
 
   return (
     <BrowserRouter>
@@ -48,7 +67,7 @@ function App() {
         <Route
           path="/onboarding"
           element={
-            isAuthenticated && user?.role !== 'superadmin' && !user?.onboardingCompleted ? (
+            isAuthenticated && sessionExpiresAt && sessionExpiresAt > Date.now() && user?.role !== 'superadmin' && !user?.onboardingCompleted ? (
               <OnboardingWizard />
             ) : (
               <Navigate to="/" replace />

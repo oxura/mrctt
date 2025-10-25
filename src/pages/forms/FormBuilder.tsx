@@ -13,6 +13,8 @@ import Select from '../../components/common/Select';
 import { useAppStore } from '../../store/appStore';
 import { FormField, LeadForm } from '../../types';
 import { nanoid } from '../../utils/nanoid';
+import { sanitizeString, sanitizeHtml } from '../../utils/validation';
+import { sanitizeUrl } from '../../utils/security';
 import {
   DndContext,
   DragEndEvent,
