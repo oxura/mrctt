@@ -14,6 +14,24 @@ export interface User {
   updated_at: string;
 }
 
+export interface TenantSettingsModules {
+  products?: boolean;
+  groups?: boolean;
+  tasks?: boolean;
+  team?: boolean;
+}
+
+export interface TenantSettingsOnboarding {
+  completed?: boolean;
+  completedAt?: string;
+}
+
+export interface TenantSettings {
+  modules?: TenantSettingsModules;
+  onboarding?: TenantSettingsOnboarding;
+  [key: string]: unknown;
+}
+
 export interface Tenant {
   id: string;
   name: string;
@@ -24,7 +42,7 @@ export interface Tenant {
   industry?: string | null;
   timezone: string;
   currency: string;
-  settings: Record<string, unknown>;
+  settings: TenantSettings;
   is_active: boolean;
   subscription_status: string;
   subscription_expires_at?: string | null;

@@ -30,7 +30,13 @@ const Login: React.FC = () => {
     try {
       const { data } = await api.post('/auth/login', form);
       setAuth(data.data);
-      navigate('/dashboard');
+      
+      const onboardingCompleted = data.data.tenant?.settings?.onboarding?.completed;
+      if (!onboardingCompleted) {
+        navigate('/onboarding');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Ошибка авторизации');
     } finally {
