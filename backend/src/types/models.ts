@@ -1,5 +1,24 @@
 export type UserRole = 'owner' | 'admin' | 'manager' | 'platform_owner';
 
+export interface TenantSettingsModules {
+  products?: boolean;
+  groups?: boolean;
+  tasks?: boolean;
+  team?: boolean;
+  [key: string]: boolean | undefined;
+}
+
+export interface TenantSettingsOnboarding {
+  completed?: boolean;
+  completedAt?: string;
+  [key: string]: unknown;
+}
+
+export interface TenantSettings extends Record<string, unknown> {
+  modules?: TenantSettingsModules;
+  onboarding?: TenantSettingsOnboarding;
+}
+
 export interface Tenant {
   id: string;
   name: string;
@@ -10,7 +29,7 @@ export interface Tenant {
   industry?: string | null;
   timezone: string;
   currency: string;
-  settings: Record<string, unknown>;
+  settings: TenantSettings;
   is_active: boolean;
   subscription_status: string;
   subscription_expires_at?: string | null;
