@@ -7,6 +7,7 @@ import { PasswordResetRepository } from '../repositories/passwordResetRepository
 import { withTransaction } from '../db/client';
 import logger from '../utils/logger';
 import { env } from '../config/env';
+import { emailService } from './emailService';
 
 const RESET_TOKEN_EXPIRY_HOURS = 1;
 
@@ -48,16 +49,15 @@ export class PasswordResetService {
 
     const resetUrl = `${env.FRONTEND_URL}/reset-password?token=${token}`;
 
+    await emailService.sendPasswordResetEmail(user.email, resetUrl, user.first_name ?? undefined);
+
     logger.info(`Password reset requested for user: ${user.id}`, {
       userId: user.id,
       tenantId: tenant.id,
-      resetUrl,
     });
 
     return {
       success: true,
-      resetUrl,
-      email: user.email,
     };
   }
 

@@ -18,21 +18,22 @@ export class PasswordResetRepository {
     },
     client: PoolClientLike = pool
   ): Promise<PasswordResetToken> {
-    const result = await client.query<PasswordResetToken>(
+    const result = await client.query(
       `INSERT INTO password_reset_tokens (user_id, token, expires_at)
        VALUES ($1, $2, $3)
        RETURNING *`,
       [data.user_id, data.token, data.expires_at]
     );
-    return result.rows[0];
+    return result.rows[0] as PasswordResetToken;
   }
 
   async findByToken(token: string, client: PoolClientLike = pool): Promise<PasswordResetToken | null> {
-    const result = await client.query<PasswordResetToken>(
+    const result = await client.query(
       'SELECT * FROM password_reset_tokens WHERE token = $1 AND used = false AND expires_at > NOW()',
       [token]
     );
-    return result.rows[0] || null;
+    const rows = result.rows as PasswordResetToken[];
+    return rows[0] || null;
   }
 
   async markAsUsed(token: string, client: PoolClientLike = pool): Promise<void> {

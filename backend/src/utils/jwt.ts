@@ -9,14 +9,14 @@ export interface JwtPayload {
 }
 
 export const generateToken = (payload: JwtPayload): string => {
-  return jwt.sign(payload, env.JWT_SECRET, {
-    expiresIn: env.JWT_EXPIRES_IN,
+  return jwt.sign(payload, env.JWT_SECRET as jwt.Secret, {
+    expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
   });
 };
 
 export const verifyToken = (token: string): JwtPayload => {
   try {
-    return jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+    return jwt.verify(token, env.JWT_SECRET as jwt.Secret) as JwtPayload;
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
       throw new AppError('Token expired', 401);
