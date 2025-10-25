@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AppError, isAppError } from '../utils/appError';
+import { isAppError } from '../utils/appError';
 import logger from '../utils/logger';
 import { env } from '../config/env';
 
@@ -7,7 +7,7 @@ export const errorHandler = (
   error: Error,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   if (isAppError(error)) {
     logger.error('Operational error:', {
@@ -64,7 +64,9 @@ export const notFoundHandler = (req: Request, res: Response) => {
   });
 };
 
-export const asyncHandler = (fn: Function) => {
+type AsyncRouteHandler = (req: Request, res: Response, next: NextFunction) => unknown | Promise<unknown>;
+
+export const asyncHandler = (fn: AsyncRouteHandler) => {
   return (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };

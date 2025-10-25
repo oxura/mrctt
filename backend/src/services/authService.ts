@@ -79,7 +79,8 @@ export class AuthService {
         role: user.role,
       });
 
-      const { password_hash, ...userWithoutPassword } = user;
+      const { password_hash: passwordHashColumn, ...userWithoutPassword } = user;
+      void passwordHashColumn;
 
       return {
         user: userWithoutPassword,
@@ -120,7 +121,8 @@ export class AuthService {
       role: user.role,
     });
 
-    const { password_hash, ...userWithoutPassword } = user;
+    const { password_hash: passwordHash2, ...userWithoutPassword } = user;
+    void passwordHash2;
 
     return {
       user: userWithoutPassword,
@@ -136,7 +138,8 @@ export class AuthService {
       throw new AppError('User not found', 404);
     }
 
-    const { password_hash, ...userWithoutPassword } = user;
+    const { password_hash: passwordHash3, ...userWithoutPassword } = user;
+    void passwordHash3;
 
     return userWithoutPassword;
   }
