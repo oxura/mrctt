@@ -17,6 +17,7 @@ import Team from './pages/team/Team';
 import Settings from './pages/settings/Settings';
 import Profile from './pages/profile/Profile';
 import Notifications from './pages/notifications/Notifications';
+import ComponentsDemo from './pages/components-demo/ComponentsDemo';
 import { useAuthStore } from './store/authStore';
 
 const App: React.FC = () => {
@@ -42,6 +43,7 @@ const App: React.FC = () => {
         <Route path="/profile" element={<Profile />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/onboarding" element={<OnboardingWizard />} />
+        <Route path="/components-demo" element={<ComponentsDemo />} />
       </Route>
 
       <Route path="*" element={<Navigate to={isAuthenticated ? '/dashboard' : '/'} replace />} />
