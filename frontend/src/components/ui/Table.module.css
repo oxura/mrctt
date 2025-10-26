@@ -120,6 +120,11 @@
   background-color: var(--color-gray-100);
 }
 
+.clickableRow:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: -2px;
+}
+
 .emptyCell {
   text-align: center;
   padding: var(--space-6);

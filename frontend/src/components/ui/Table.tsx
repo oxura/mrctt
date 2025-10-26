@@ -59,6 +59,11 @@ function Table<T extends Record<string, any>>({
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  useEffect(() => {
+    setPageSize(initialPageSize);
+    setCurrentPage(1);
+  }, [initialPageSize]);
+
   const filteredAndSortedData = useMemo(() => {
     let result = [...data];
 
@@ -98,6 +103,7 @@ function Table<T extends Record<string, any>>({
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const paginatedData = filteredAndSortedData.slice(startIndex, endIndex);
+  const paginatedIds = paginatedData.map((row) => keyExtractor(row));
   const hasData = filteredAndSortedData.length > 0;
   const displayStart = hasData ? startIndex + 1 : 0;
   const displayEnd = hasData ? Math.min(endIndex, filteredAndSortedData.length) : 0;
@@ -115,21 +121,33 @@ function Table<T extends Record<string, any>>({
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === paginatedData.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(paginatedData.map(keyExtractor)));
-    }
+    setSelectedIds((prev) => {
+      if (paginatedIds.length === 0) {
+        return prev;
+      }
+      const next = new Set(prev);
+      const allPageSelected = paginatedIds.every((id) => next.has(id));
+
+      if (allPageSelected) {
+        paginatedIds.forEach((id) => next.delete(id));
+      } else {
+        paginatedIds.forEach((id) => next.add(id));
+      }
+
+      return next;
+    });
   };
 
   const handleSelectRow = (id: string) => {
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedIds(newSelected);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const handlePageSizeChange = (newSize: string) => {
@@ -137,12 +155,8 @@ function Table<T extends Record<string, any>>({
     setCurrentPage(1);
   };
 
-  const allSelected = paginatedData.length > 0 && selectedIds.size === paginatedData.length;
-  const someSelected = selectedIds.size > 0 && !allSelected;
-
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [searchQuery, filterValues, currentPage, pageSize]);
+  const allSelected = paginatedIds.length > 0 && paginatedIds.every((id) => selectedIds.has(id));
+  const someSelected = paginatedIds.some((id) => selectedIds.has(id)) && !allSelected;
 
   useEffect(() => {
     const nextTotalPages = Math.max(1, Math.ceil(filteredAndSortedData.length / pageSize));
@@ -161,7 +175,7 @@ function Table<T extends Record<string, any>>({
           validIds.add(id);
         }
       });
-      return validIds;
+      return validIds.size === prev.size ? prev : validIds;
     });
   }, [filteredAndSortedData, keyExtractor]);
 
@@ -228,7 +242,7 @@ function Table<T extends Record<string, any>>({
                   <Checkbox
                     checked={allSelected}
                     indeterminate={someSelected}
-                    onChange={handleSelectAll}
+                    onChange={() => handleSelectAll()}
                     aria-label="Выбрать все"
                   />
                 </th>
@@ -277,7 +291,59 @@ function Table<T extends Record<string, any>>({
                   <tr
                     key={rowId}
                     className={onRowClick ? styles.clickableRow : ''}
-                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    onClick={
+                      onRowClick
+                        ? (event) => {
+                            if (!(event.target instanceof HTMLElement)) {
+                              onRowClick(row);
+                              return;
+                            }
+
+                            const interactiveElement = event.target.closest(
+                              'a, button, input, textarea, select, label, [role="button"], [role="link"], [role="menuitem"], [data-prevent-row-click]'
+                            );
+
+                            if (interactiveElement) {
+                              return;
+                            }
+
+                            onRowClick(row);
+                          }
+                        : undefined
+                    }
+                    tabIndex={onRowClick ? 0 : undefined}
+                    onKeyDown={
+                      onRowClick
+                        ? (event) => {
+                            const isActionKey =
+                              event.key === 'Enter' ||
+                              event.key === ' ' ||
+                              event.key === 'Space' ||
+                              event.key === 'Spacebar';
+
+                            if (!isActionKey) {
+                              return;
+                            }
+
+                            if (!(event.target instanceof HTMLElement)) {
+                              event.preventDefault();
+                              onRowClick(row);
+                              return;
+                            }
+
+                            const interactiveElement = event.target.closest(
+                              'a, button, input, textarea, select, label, [role="button"], [role="link"], [role="menuitem"], [data-prevent-row-click]'
+                            );
+
+                            if (interactiveElement) {
+                              return;
+                            }
+
+                            event.preventDefault();
+                            onRowClick(row);
+                          }
+                        : undefined
+                    }
                   >
                     {bulkActions.length > 0 && (
                       <td 

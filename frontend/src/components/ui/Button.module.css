@@ -20,6 +20,11 @@
   cursor: not-allowed;
 }
 
+.button:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
 .sm {
   padding: 0.5rem 0.8rem;
   font-size: var(--font-size-xs);

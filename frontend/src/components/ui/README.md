@@ -364,6 +364,83 @@ import type { ButtonProps, InputProps } from '@/components/ui';
 - Управление фокусом
 - Screen reader friendly
 
+### Badge
+Компонент для отображения статусов, меток и категорий.
+
+**Варианты**: `primary`, `success`, `error`, `warning`, `info`, `neutral`  
+**Размеры**: `sm`, `md`, `lg`
+
+**Пропсы**:
+- `variant?: BadgeVariant` - Цветовая схема
+- `size?: BadgeSize` - Размер
+- `dot?: boolean` - Показать точку слева
+
+**Пример**:
+```tsx
+import { Badge } from '@/components/ui';
+
+<Badge variant="success" size="md">
+  Активный
+</Badge>
+
+<Badge variant="error" size="sm" dot>
+  Просрочено
+</Badge>
+```
+
+### Spinner
+Индикатор загрузки.
+
+**Пропсы**:
+- `size?: 'sm' | 'md' | 'lg' | 'xl'` - Размер
+- `variant?: 'primary' | 'white' | 'gray'` - Цветовая схема
+- `label?: string` - Текст для screen readers
+- `centered?: boolean` - Центрировать по контейнеру
+
+**Пример**:
+```tsx
+import { Spinner } from '@/components/ui';
+
+<Spinner size="md" variant="primary" />
+<Spinner size="lg" centered label="Загрузка данных..." />
+```
+
+### Skeleton
+Компонент-заглушка для индикации загрузки контента.
+
+**Пропсы**:
+- `variant?: 'text' | 'rectangular' | 'circular'` - Форма
+- `width?: string | number` - Ширина
+- `height?: string | number` - Высота
+- `animation?: 'pulse' | 'wave' | false` - Тип анимации
+
+**Пример**:
+```tsx
+import { Skeleton } from '@/components/ui';
+
+<Skeleton variant="text" width="100%" />
+<Skeleton variant="rectangular" width={200} height={100} />
+<Skeleton variant="circular" width={40} height={40} />
+```
+
+### Divider
+Горизонтальный или вертикальный разделитель.
+
+**Пропсы**:
+- `orientation?: 'horizontal' | 'vertical'` - Направление
+- `variant?: 'solid' | 'dashed' | 'dotted'` - Стиль линии
+- `spacing?: 'none' | 'sm' | 'md' | 'lg'` - Отступы
+- `label?: string` - Текстовая метка (только для horizontal)
+
+**Пример**:
+```tsx
+import { Divider } from '@/components/ui';
+
+<Divider />
+<Divider variant="dashed" spacing="lg" />
+<Divider orientation="horizontal" label="или" />
+```
+
 ## Поддержка TypeScript
 
 Все компоненты полностью типизированы с TypeScript для безопасности типов и автодополнения.
