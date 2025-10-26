@@ -13,12 +13,6 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   firstName: z.string().min(1),
-  lastName: z.string().optional(),
-  companyName: z.string().min(1),
-  companySlug: z.string().min(3).regex(/^[a-z0-9-]+$/),
-  country: z.string().optional(),
-  city: z.string().optional(),
-  industry: z.string().optional(),
 });
 
 const loginSchema = z.object({

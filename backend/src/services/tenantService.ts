@@ -7,6 +7,14 @@ type ModuleKey = (typeof moduleKeys)[number];
 
 type ModuleSettings = Record<ModuleKey, boolean>;
 
+const normalizeSlug = (value: string): string =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
 export class TenantService {
   private tenantRepo: TenantRepository;
 
@@ -32,6 +40,7 @@ export class TenantService {
     tenantId: string,
     data: {
       name?: string;
+      slug?: string;
       logo_url?: string | null;
       country?: string | null;
       city?: string | null;
@@ -43,6 +52,23 @@ export class TenantService {
 
     if (!tenant) {
       throw new AppError('Tenant not found', 404);
+    }
+
+    let normalizedSlug: string | undefined;
+    if (data.slug !== undefined) {
+      const candidate = normalizeSlug(data.slug);
+
+      if (candidate.length < 3) {
+        throw new AppError('Workspace address must contain at least 3 characters', 400);
+      }
+
+      if (candidate !== tenant.slug) {
+        const existingTenant = await this.tenantRepo.findBySlug(candidate);
+        if (existingTenant && existingTenant.id !== tenant.id) {
+          throw new AppError('Workspace address is already in use', 409);
+        }
+        normalizedSlug = candidate;
+      }
     }
 
     const currentSettings = (tenant.settings || {}) as TenantSettings;
@@ -79,6 +105,7 @@ export class TenantService {
 
     const updatedTenant = await this.tenantRepo.update(tenantId, {
       name: data.name,
+      slug: normalizedSlug,
       logo_url: data.logo_url,
       country: data.country,
       city: data.city,

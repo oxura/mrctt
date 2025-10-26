@@ -63,7 +63,11 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
       >
         <div className={styles.header}>
           <div className={styles.logo} role="banner">
-            <span className={styles.logoIcon} aria-hidden="true">🌿</span>
+            {tenant?.logo_url ? (
+              <img src={tenant.logo_url} alt={`${tenant.name} logo`} className={styles.logoImage} />
+            ) : (
+              <span className={styles.logoIcon} aria-hidden="true">🌿</span>
+            )}
             {!collapsed && <span className={styles.logoText}>{tenant?.name || 'Экосистема'}</span>}
           </div>
           <button 

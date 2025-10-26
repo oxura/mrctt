@@ -296,3 +296,54 @@
   height: auto;
   display: block;
 }
+
+.slugField {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.slugField:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.slugField input {
+  flex: 1;
+  border: none;
+  padding: 12px;
+  font-size: 14px;
+  background-color: transparent;
+}
+
+.slugField input:focus {
+  outline: none;
+}
+
+.slugSuffix {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #6b7280;
+  background-color: #f9fafb;
+  border-left: 1px solid #d1d5db;
+  white-space: nowrap;
+}
+
+.fieldHint {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 6px;
+}
+
+.slugPreview {
+  font-size: 13px;
+  color: #3b82f6;
+  font-weight: 500;
+  font-family: 'Fira Code', 'Source Code Pro', monospace;
+  margin-top: 4px;
+  word-break: break-all;
+}

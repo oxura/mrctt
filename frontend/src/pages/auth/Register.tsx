@@ -4,13 +4,6 @@ import api from '../../utils/api';
 import { useAuthStore } from '../../store/authStore';
 import styles from './Auth.module.css';
 
-const slugify = (value: string) =>
-  value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -19,12 +12,6 @@ const Register: React.FC = () => {
     email: '',
     password: '',
     firstName: '',
-    lastName: '',
-    companyName: '',
-    companySlug: '',
-    country: '',
-    city: '',
-    industry: '',
     acceptTerms: false,
   });
 
@@ -32,7 +19,7 @@ const Register: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const { name, value, type } = event.target;
     const isCheckbox = type === 'checkbox';
@@ -40,10 +27,6 @@ const Register: React.FC = () => {
     setForm((prev) => ({
       ...prev,
       [name]: isCheckbox ? Boolean(checked) : value,
-      ...(name === 'companyName' &&
-        !prev.companySlug && {
-          companySlug: slugify(value),
-        }),
     }));
   };
 
@@ -63,12 +46,6 @@ const Register: React.FC = () => {
         email: form.email,
         password: form.password,
         firstName: form.firstName,
-        lastName: form.lastName,
-        companyName: form.companyName,
-        companySlug: form.companySlug || slugify(form.companyName),
-        country: form.country,
-        city: form.city,
-        industry: form.industry,
       };
 
       const { data } = await api.post('/auth/register', payload);
@@ -91,105 +68,40 @@ const Register: React.FC = () => {
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <label>
-            Email
+            Email <span className={styles.required}>*</span>
             <input
               type="email"
               name="email"
               value={form.email}
               onChange={handleChange}
+              placeholder="your@email.com"
               required
             />
           </label>
 
           <label>
-            Пароль
+            Пароль <span className={styles.required}>*</span>
             <input
               type="password"
               name="password"
               value={form.password}
               onChange={handleChange}
+              placeholder="Минимум 8 символов"
               required
               minLength={8}
             />
           </label>
 
           <label>
-            Имя
+            Имя <span className={styles.required}>*</span>
             <input
               type="text"
               name="firstName"
               value={form.firstName}
               onChange={handleChange}
+              placeholder="Ваше имя"
               required
             />
-          </label>
-
-          <label>
-            Фамилия
-            <input
-              type="text"
-              name="lastName"
-              value={form.lastName}
-              onChange={handleChange}
-            />
-          </label>
-
-          <label>
-            Название компании
-            <input
-              type="text"
-              name="companyName"
-              value={form.companyName}
-              onChange={handleChange}
-              required
-            />
-          </label>
-
-          <label>
-            Адрес рабочей области
-            <div className={styles.slugField}>
-              <input
-                type="text"
-                name="companySlug"
-                placeholder="company"
-                value={form.companySlug}
-                onChange={handleChange}
-                required
-              />
-              <span>.ecosystem.app</span>
-            </div>
-          </label>
-
-          <label>
-            Страна
-            <input
-              type="text"
-              name="country"
-              value={form.country}
-              onChange={handleChange}
-            />
-          </label>
-
-          <label>
-            Город
-            <input
-              type="text"
-              name="city"
-              value={form.city}
-              onChange={handleChange}
-            />
-          </label>
-
-          <label>
-            Ниша
-            <select name="industry" value={form.industry} onChange={handleChange}>
-              <option value="">Выберите нишу</option>
-              <option value="courses">Онлайн-школа / курсы</option>
-              <option value="services">Услуги / фриланс</option>
-              <option value="medicine">Медицина / клиника</option>
-              <option value="tourism">Туризм / мероприятия</option>
-              <option value="other">Другое</option>
-            </select>
           </label>
 
           <label className={styles.checkboxLabel}>
@@ -199,13 +111,13 @@ const Register: React.FC = () => {
               checked={form.acceptTerms}
               onChange={handleChange}
             />
-            <span>Я согласен с офертой и политикой конфиденциальности</span>
+            <span>Я согласен с <a href="/terms" target="_blank">офертой</a> и <a href="/privacy" target="_blank">политикой конфиденциальности</a></span>
           </label>
 
           {error && <div className={styles.error}>{error}</div>}
 
-          <button type="submit" disabled={loading}>
-            {loading ? 'Создаём...' : 'Создать аккаунт'}
+          <button type="submit" disabled={loading} className={styles.primary}>
+            {loading ? 'Создаём аккаунт...' : 'Создать аккаунт'}
           </button>
         </form>
 
