@@ -8,14 +8,16 @@ import {
   Card,
   CardHeader,
   CardBody,
-  CardFooter,
   Modal,
-  ModalHeader,
   ModalBody,
   ModalFooter,
   Dropdown,
   useToast,
   Table,
+  Badge,
+  Skeleton,
+  Spinner,
+  Divider,
 } from '../../components/ui';
 import type { Column, BulkAction, FilterOption } from '../../components/ui';
 import styles from './ComponentsDemo.module.css';
@@ -284,6 +286,136 @@ const ComponentsDemo: React.FC = () => {
             <Button onClick={() => toast.info('Информация')}>
               Info
             </Button>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Badge */}
+      <Card>
+        <CardHeader>
+          <h2>Бэйджи (Badge)</h2>
+        </CardHeader>
+        <CardBody>
+          <div className={styles.section}>
+            <h3>Варианты</h3>
+            <div className={styles.buttonGroup}>
+              <Badge variant="primary">Primary</Badge>
+              <Badge variant="success">Success</Badge>
+              <Badge variant="error">Error</Badge>
+              <Badge variant="warning">Warning</Badge>
+              <Badge variant="info">Info</Badge>
+              <Badge variant="neutral">Neutral</Badge>
+            </div>
+          </div>
+
+          <div className={styles.section}>
+            <h3>С точкой</h3>
+            <div className={styles.buttonGroup}>
+              <Badge variant="success" dot>Активный</Badge>
+              <Badge variant="error" dot>Просрочено</Badge>
+              <Badge variant="warning" dot>В ожидании</Badge>
+            </div>
+          </div>
+
+          <div className={styles.section}>
+            <h3>Размеры</h3>
+            <div className={styles.buttonGroup}>
+              <Badge variant="primary" size="sm">Small</Badge>
+              <Badge variant="primary" size="md">Medium</Badge>
+              <Badge variant="primary" size="lg">Large</Badge>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Spinner */}
+      <Card>
+        <CardHeader>
+          <h2>Загрузка (Spinner)</h2>
+        </CardHeader>
+        <CardBody>
+          <div className={styles.section}>
+            <h3>Размеры</h3>
+            <div className={styles.buttonGroup}>
+              <Spinner size="sm" />
+              <Spinner size="md" />
+              <Spinner size="lg" />
+              <Spinner size="xl" />
+            </div>
+          </div>
+
+          <div className={styles.section}>
+            <h3>Варианты</h3>
+            <div className={styles.buttonGroup}>
+              <Spinner variant="primary" />
+              <Spinner variant="gray" />
+              <div style={{ background: '#2563eb', padding: '10px', borderRadius: '4px' }}>
+                <Spinner variant="white" />
+              </div>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Skeleton */}
+      <Card>
+        <CardHeader>
+          <h2>Skeleton (заглушки)</h2>
+        </CardHeader>
+        <CardBody>
+          <div className={styles.section}>
+            <h3>Текстовые</h3>
+            <div style={{ width: '100%' }}>
+              <Skeleton variant="text" width="100%" />
+              <Skeleton variant="text" width="80%" />
+              <Skeleton variant="text" width="60%" />
+            </div>
+          </div>
+
+          <div className={styles.section}>
+            <h3>Блоки и кружки</h3>
+            <div className={styles.buttonGroup}>
+              <Skeleton variant="rectangular" width={200} height={100} />
+              <Skeleton variant="circular" width={80} height={80} />
+            </div>
+          </div>
+
+          <div className={styles.section}>
+            <h3>Анимация</h3>
+            <div style={{ width: '100%' }}>
+              <Skeleton variant="text" animation="pulse" width="100%" />
+              <Skeleton variant="text" animation="wave" width="100%" />
+              <Skeleton variant="text" animation={false} width="100%" />
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Divider */}
+      <Card>
+        <CardHeader>
+          <h2>Разделители (Divider)</h2>
+        </CardHeader>
+        <CardBody>
+          <div className={styles.section}>
+            <h3>Стандартный</h3>
+            <p>Текст выше разделителя</p>
+            <Divider />
+            <p>Текст ниже разделителя</p>
+          </div>
+
+          <div className={styles.section}>
+            <h3>С меткой</h3>
+            <p>Текст выше</p>
+            <Divider label="или" />
+            <p>Текст ниже</p>
+          </div>
+
+          <div className={styles.section}>
+            <h3>Варианты стилей</h3>
+            <Divider variant="solid" spacing="sm" />
+            <Divider variant="dashed" spacing="md" />
+            <Divider variant="dotted" spacing="lg" />
           </div>
         </CardBody>
       </Card>
