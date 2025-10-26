@@ -62,20 +62,29 @@ All 5 requested tasks have been successfully implemented:
 ```
 backend/
 ├── migrations/
-│   └── 00003_rbac_permissions.sql        # RBAC migration with roles, permissions, assignments
+│   ├── 00003_rbac_permissions.sql        # RBAC migration with roles, permissions, assignments
+│   ├── 00004_update_manager_task_permissions.sql
+│   └── 00005_audit_logs.sql              # Audit logging infrastructure
 ├── src/
 │   ├── middleware/
-│   │   └── rbac.ts                       # Permission checking middleware
+│   │   ├── rbac.ts                       # Permission checking middleware
+│   │   └── audit.ts                      # Route-level audit logging helper
 │   ├── repositories/
-│   │   └── permissionRepository.ts       # Permission data access layer
+│   │   ├── permissionRepository.ts       # Permission data access layer
+│   │   └── auditLogRepository.ts         # Audit log data access layer
+│   ├── services/
+│   │   └── auditService.ts               # Programmatic audit logging helper
 │   ├── controllers/
-│   │   └── userController.ts             # User/team management with permissions
+│   │   ├── userController.ts             # User/team management with permissions
+│   │   └── auditController.ts            # Audit log retrieval
 │   ├── routes/
-│   │   └── userRoutes.ts                 # User/team routes with RBAC guards
+│   │   ├── userRoutes.ts                 # User/team routes with RBAC guards
+│   │   └── auditRoutes.ts                # Audit log routes with RBAC guard
 │   └── db/
 │       └── testConnection.ts             # Database connection test utility
 ├── RBAC_GUIDE.md                         # Complete RBAC documentation
 ├── RBAC_CHANGES.md                       # Detailed change summary
+├── RBAC_AUDIT_IMPROVEMENTS.md            # Audit + RBAC enhancement summary
 └── TEST_RBAC.md                          # Testing guide with curl examples
 ```
 
@@ -84,8 +93,11 @@ backend/
 ```
 backend/src/
 ├── routes/
-│   ├── index.ts                          # Added userRoutes
-│   └── tenantRoutes.ts                   # Updated to use permission middleware
+│   ├── index.ts                          # Added userRoutes & auditRoutes
+│   ├── tenantRoutes.ts                   # Permission middleware + audit logging
+│   └── userRoutes.ts                     # Permission middleware + audit logging
+├── controllers/
+│   └── authController.ts                 # Audit logging for register/login
 ├── repositories/
 │   └── userRepository.ts                 # Added first-user detection & auto-owner
 ├── services/
@@ -106,6 +118,8 @@ backend/src/
 4. **Scoped Permissions**: Support for `:own` vs `:all` scope (e.g., update own leads vs all leads)
 5. **Performance**: Permissions loaded once during authentication and cached in request
 6. **Type-Safe**: Full TypeScript support with proper interfaces
+7. **Audit Trail**: Comprehensive logging of critical actions with user, tenant, and IP context
+8. **Compliance Ready**: Audit logs support GDPR, SOC2, and other regulatory requirements
 
 ## 🆕 New API Endpoints
 
@@ -114,6 +128,7 @@ GET  /api/v1/users/me/permissions          # Get current user's permissions
 GET  /api/v1/users/team                    # List team members (requires users:read)
 POST /api/v1/users/team                    # Invite team member (requires users:create + users:manage-roles)
 GET  /api/v1/users/roles                   # List all roles with permissions
+GET  /api/v1/audit                         # List audit logs (requires audit:read)
 ```
 
 ## 🔐 Permission Examples by Role
@@ -133,7 +148,7 @@ GET  /api/v1/users/roles                   # List all roles with permissions
 - ❌ Tenant deletion
 - ✅ Dashboard access
 
-### Manager (15 permissions)
+### Manager (16 permissions)
 - ❌ Tenant operations
 - ✅ View own profile, update own profile
 - ✅ View all leads, but only create/update/delete own leads
@@ -141,20 +156,27 @@ GET  /api/v1/users/roles                   # List all roles with permissions
 - ✅ Read-only: products, groups, forms
 - ❌ User/team management
 - ❌ Billing
+- ❌ Audit logs
 - ✅ Dashboard access
 
 ## 📊 Database Schema
 
 ### Tables
 - `roles` - 4 predefined roles
-- `permissions` - ~40 granular permissions
+- `permissions` - ~41 granular permissions (including audit:read)
 - `role_permissions` - Many-to-many junction table
+- `audit_logs` - Audit trail for compliance
 
 ### Indexes
 - `idx_role_permissions_role_id`
 - `idx_role_permissions_permission_id`
 - `idx_permissions_resource`
 - `idx_permissions_action`
+- `idx_audit_logs_tenant_id`
+- `idx_audit_logs_user_id`
+- `idx_audit_logs_action`
+- `idx_audit_logs_resource_type`
+- `idx_audit_logs_created_at`
 
 ## 🧪 Testing
 

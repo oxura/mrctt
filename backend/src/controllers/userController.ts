@@ -27,7 +27,8 @@ export const listTeamMembers = asyncHandler(async (req: Request, res: Response) 
   const users = await userRepo.listByTenant(req.tenantId);
 
   const usersWithoutPasswords = users.map((user) => {
-    const { password_hash, ...userWithoutPassword } = user;
+    const { password_hash: passwordHash, ...userWithoutPassword } = user;
+    void passwordHash;
     return userWithoutPassword;
   });
 
@@ -68,7 +69,8 @@ export const inviteTeamMember = asyncHandler(async (req: Request, res: Response)
     role,
   });
 
-  const { password_hash, ...userWithoutPassword } = user;
+  const { password_hash: passwordHash2, ...userWithoutPassword } = user;
+  void passwordHash2;
 
   res.status(201).json({
     status: 'success',

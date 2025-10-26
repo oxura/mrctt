@@ -8,6 +8,7 @@ import {
 import { authenticate } from '../middleware/auth';
 import { tenantGuard } from '../middleware/tenant';
 import { requirePermission, requireAllPermissions } from '../middleware/rbac';
+import { auditLog } from '../middleware/audit';
 
 const router = Router();
 
@@ -31,6 +32,7 @@ router.post(
   authenticate,
   tenantGuard,
   requireAllPermissions('users:create', 'users:manage-roles'),
+  auditLog('user.invite', 'user'),
   inviteTeamMember
 );
 

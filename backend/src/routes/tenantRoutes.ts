@@ -7,6 +7,7 @@ import {
 import { authenticate } from '../middleware/auth';
 import { tenantGuard } from '../middleware/tenant';
 import { requirePermission } from '../middleware/rbac';
+import { auditLog } from '../middleware/audit';
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.patch(
   authenticate,
   tenantGuard,
   requirePermission('tenants:update'),
+  auditLog('tenant.onboarding.update', 'tenant'),
   updateCurrentTenantOnboarding
 );
 router.get('/', authenticate, requirePermission('tenants:list'), listTenants);

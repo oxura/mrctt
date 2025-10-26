@@ -1,10 +1,13 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { AuthService } from '../services/authService';
+import { AuditService } from '../services/auditService';
 import { AppError } from '../utils/appError';
 import { asyncHandler } from '../middleware/errorHandler';
+import logger from '../utils/logger';
 
 const authService = new AuthService();
+const auditService = new AuditService();
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -33,6 +36,24 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
   const result = await authService.register(parsed.data);
 
+  auditService
+    .record({
+      tenantId: result.tenant.id,
+      userId: result.user.id,
+      action: 'user.register',
+      resourceType: 'user',
+      resourceId: result.user.id,
+      details: {
+        email: result.user.email,
+        tenantName: result.tenant.name,
+        role: result.user.role,
+      },
+      request: req,
+    })
+    .catch((error) => {
+      logger.warn('Failed to audit registration', { error });
+    });
+
   res.status(201).json({
     status: 'success',
     data: result,
@@ -47,6 +68,23 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const result = await authService.login(parsed.data);
+
+  auditService
+    .record({
+      tenantId: result.tenant.id,
+      userId: result.user.id,
+      action: 'user.login',
+      resourceType: 'user',
+      resourceId: result.user.id,
+      details: {
+        email: result.user.email,
+        tenantSlug: result.tenant.slug,
+      },
+      request: req,
+    })
+    .catch((error) => {
+      logger.warn('Failed to audit login', { error });
+    });
 
   res.status(200).json({
     status: 'success',
