@@ -1,38 +1,10 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import styles from './Toast.module.css';
+import type { ToastType, ToastOptions, Toast } from './toastTypes';
+import { ToastContext } from './toastContext';
 
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
-
-export interface ToastOptions {
-  id?: string;
-  type?: ToastType;
-  message: string;
-  duration?: number;
-}
-
-export interface Toast extends ToastOptions {
-  id: string;
-}
-
-interface ToastContextValue {
-  addToast: (options: ToastOptions) => void;
-  removeToast: (id: string) => void;
-  success: (message: string, duration?: number) => void;
-  error: (message: string, duration?: number) => void;
-  warning: (message: string, duration?: number) => void;
-  info: (message: string, duration?: number) => void;
-}
-
-const ToastContext = createContext<ToastContextValue | undefined>(undefined);
-
-export const useToast = () => {
-  const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error('useToast must be used within a ToastProvider');
-  }
-  return context;
-};
+export type { ToastType, ToastOptions, Toast } from './toastTypes';
 
 const ToastIcon: React.FC<{ type: ToastType }> = ({ type }) => {
   const icons = {

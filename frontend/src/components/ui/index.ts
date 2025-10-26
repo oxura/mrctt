@@ -22,8 +22,9 @@ export type { ModalProps } from './Modal';
 export { default as Dropdown } from './Dropdown';
 export type { DropdownProps, DropdownItem } from './Dropdown';
 
-export { default as ToastProvider, useToast } from './Toast';
-export type { ToastOptions, ToastType } from './Toast';
+export { default as ToastProvider } from './Toast';
+export { useToast } from './toastContext';
+export type { ToastOptions, ToastType } from './toastTypes';
 
 export { default as Table } from './Table';
 export type { TableProps, Column, FilterOption, BulkAction } from './Table';
