@@ -6,11 +6,22 @@ interface KpiCardProps {
   value: string;
   trend?: string;
   trendDirection?: 'up' | 'down' | 'neutral';
+  variant?: 'default' | 'danger';
 }
 
-const KpiCard: React.FC<KpiCardProps> = ({ label, value, trend, trendDirection = 'neutral' }) => {
+const KpiCard: React.FC<KpiCardProps> = ({
+  label,
+  value,
+  trend,
+  trendDirection = 'neutral',
+  variant = 'default',
+}) => {
+  const cardClassName = [styles.card, variant !== 'default' ? styles[variant] : '']
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div className={styles.card}>
+    <div className={cardClassName}>
       <div className={styles.label}>{label}</div>
       <div className={styles.value}>{value}</div>
       {trend && (

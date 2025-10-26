@@ -39,3 +39,16 @@
 .trend.neutral {
   color: #6b7280;
 }
+
+.danger {
+  border-color: #fecaca;
+  background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+}
+
+.danger .label {
+  color: #991b1b;
+}
+
+.danger .value {
+  color: #dc2626;
+}

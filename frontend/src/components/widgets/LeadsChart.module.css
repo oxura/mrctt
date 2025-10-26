@@ -34,15 +34,20 @@
   stroke-dasharray: 4;
 }
 
-.bar {
-  transition: height 0.3s ease, y 0.3s ease;
+.line {
+  transition: stroke-width 0.3s ease;
 }
 
-.bar:hover {
-  fill: #4338ca;
+.point {
+  transition: r 0.2s ease;
+  cursor: pointer;
 }
 
-.barLabel {
+.point:hover {
+  r: 6;
+}
+
+.pointLabel {
   font-weight: 500;
 }
 

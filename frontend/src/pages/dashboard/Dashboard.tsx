@@ -37,6 +37,8 @@ const Dashboard: React.FC = () => {
     return `${percent}%`;
   };
 
+  const overdueCount = stats?.overdueTasks?.count || 0;
+
   const kpis = [
     {
       label: 'Новые лиды',
@@ -58,9 +60,10 @@ const Dashboard: React.FC = () => {
     },
     {
       label: 'Просроченные задачи',
-      value: statsLoading ? '...' : stats?.overdueTasks?.count.toString() || '0',
+      value: statsLoading ? '...' : overdueCount.toString(),
       trend: '',
-      trendDirection: (stats?.overdueTasks?.count || 0) > 0 ? 'down' as const : 'neutral' as const,
+      trendDirection: overdueCount > 0 ? 'down' as const : 'neutral' as const,
+      variant: statsLoading ? 'default' as const : (overdueCount > 0 ? 'danger' as const : 'default' as const),
     },
   ];
 
