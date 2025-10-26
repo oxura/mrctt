@@ -18,25 +18,34 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLFormElement>(null);
+  const mobileSearchRef = useRef<HTMLDivElement>(null);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
 
   const hasSearchResults = searchResults.length > 0;
 
   const closeNotifications = useCallback(() => setShowNotifications(false), []);
   const closeUserMenu = useCallback(() => setShowUserMenu(false), []);
   const closeSearchResults = useCallback(() => setShowSearchResults(false), []);
+  const closeMobileSearch = useCallback(() => {
+    setShowMobileSearch(false);
+    setShowSearchResults(false);
+  }, []);
 
   const closeAllMenus = useCallback(() => {
     closeSearchResults();
     closeNotifications();
     closeUserMenu();
-  }, [closeNotifications, closeUserMenu, closeSearchResults]);
+    closeMobileSearch();
+  }, [closeNotifications, closeMobileSearch, closeUserMenu, closeSearchResults]);
 
   useClickOutside(notificationsRef, closeNotifications, showNotifications);
   useClickOutside(userMenuRef, closeUserMenu, showUserMenu);
   useClickOutside(searchRef, closeSearchResults, showSearchResults);
+  useClickOutside(mobileSearchRef, closeMobileSearch, showMobileSearch);
 
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
@@ -88,6 +97,9 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
       navigate(`/leads?search=${encodeURIComponent(searchQuery)}`);
       setSearchQuery('');
       setShowSearchResults(false);
+      if (showMobileSearch) {
+        closeMobileSearch();
+      }
     }
   };
 
@@ -95,6 +107,9 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
     navigate(`/leads?lead=${encodeURIComponent(leadId)}`);
     setSearchQuery('');
     setShowSearchResults(false);
+    if (showMobileSearch) {
+      closeMobileSearch();
+    }
   };
 
   const handleLogout = () => {
@@ -214,6 +229,28 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
       </div>
 
       <div className={styles.rightSection}>
+        <button 
+          type="button"
+          className={styles.mobileSearchButton} 
+          onClick={() => {
+            setShowMobileSearch((prev) => {
+              const next = !prev;
+              if (next) {
+                closeNotifications();
+                closeUserMenu();
+                requestAnimationFrame(() => mobileSearchInputRef.current?.focus());
+              }
+              return next;
+            });
+          }}
+          title="Поиск"
+          aria-label="Открыть поиск"
+          aria-expanded={showMobileSearch}
+          aria-haspopup="dialog"
+        >
+          🔍
+        </button>
+
         <div className={styles.notificationsWrapper} ref={notificationsRef}>
           <button 
             type="button"
@@ -317,6 +354,83 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
           )}
         </div>
       </div>
+
+      {showMobileSearch && (
+        <div className={styles.mobileSearchOverlay} role="dialog" aria-label="Мобильный поиск">
+          <div className={styles.mobileSearchModal} ref={mobileSearchRef}>
+            <div className={styles.mobileSearchHeader}>
+              <span className={styles.searchIcon} aria-hidden="true">🔍</span>
+              <input 
+                ref={mobileSearchInputRef}
+                type="text" 
+                placeholder="Поиск по лидам, телефонам..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={handleSearchFocus}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchQuery.trim()) {
+                    navigate(`/leads?search=${encodeURIComponent(searchQuery)}`);
+                    setSearchQuery('');
+                    closeMobileSearch();
+                  }
+                }}
+                className={styles.mobileSearchInput}
+                aria-label="Глобальный поиск"
+              />
+              <button 
+                type="button" 
+                className={styles.closeMobileSearch}
+                onClick={closeMobileSearch}
+                aria-label="Закрыть поиск"
+              >
+                ✕
+              </button>
+            </div>
+
+            {searchResults.length > 0 ? (
+              <div className={styles.mobileSearchResults}>
+                {searchResults.map((result) => (
+                  <div
+                    key={result.id}
+                    className={styles.mobileSearchResult}
+                    onClick={() => {
+                      navigate(`/leads?lead=${encodeURIComponent(result.id)}`);
+                      setSearchQuery('');
+                      closeMobileSearch();
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/leads?lead=${encodeURIComponent(result.id)}`);
+                        setSearchQuery('');
+                        closeMobileSearch();
+                      }
+                    }}
+                  >
+                    <div className={styles.resultMain}>
+                      <span className={styles.resultName}>{result.name}</span>
+                      <span className={styles.resultPhone}>{result.phone}</span>
+                    </div>
+                    <div className={styles.resultMeta}>
+                      <span className={styles.resultStatus}>{result.status}</span>
+                      <span className={styles.resultManager}>{result.manager}</span>
+                    </div>
+                    {result.product && (
+                      <div className={styles.resultProduct}>{result.product}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : searchQuery.trim().length > 0 ? (
+              <div className={styles.mobileSearchEmpty}>
+                Ничего не найдено
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
     </header>
   );
 };

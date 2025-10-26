@@ -7,6 +7,8 @@ export interface SearchLead {
   product?: string;
 }
 
+// Mock data for global search demonstration
+// TODO: Replace with API call to /api/v1/leads/search in production
 export const searchLeads: SearchLead[] = [
   { id: 'L-101', name: 'Иван Петров', phone: '+7 (901) 123-45-67', status: 'В работе', manager: 'Анна Кузнецова', product: 'Курс по дизайну' },
   { id: 'L-102', name: 'Мария Сидорова', phone: '+7 (921) 555-01-02', status: 'Новый', manager: 'Олег Пастухов', product: 'Тур в Грузию' },
