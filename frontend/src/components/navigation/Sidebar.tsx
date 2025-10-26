@@ -35,23 +35,29 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
 
   return (
     <>
-      {mobileOpen && <div className={styles.overlay} onClick={onMobileClose} />}
-      <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''} ${mobileOpen ? styles.mobileOpen : ''}`}>
+      {mobileOpen && <div className={styles.overlay} onClick={onMobileClose} aria-hidden="true" />}
+      <aside 
+        className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''} ${mobileOpen ? styles.mobileOpen : ''}`}
+        aria-label="Основная навигация"
+      >
         <div className={styles.header}>
-          <div className={styles.logo}>
-            <span className={styles.logoIcon}>🌿</span>
+          <div className={styles.logo} role="banner">
+            <span className={styles.logoIcon} aria-hidden="true">🌿</span>
             {!collapsed && <span className={styles.logoText}>{tenant?.name || 'Экосистема'}</span>}
           </div>
           <button 
+            type="button"
             className={styles.toggleButton} 
             onClick={() => setCollapsed((prev) => !prev)}
-            title={collapsed ? 'Развернуть' : 'Свернуть'}
+            title={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
+            aria-label={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
+            aria-expanded={!collapsed}
           >
             {collapsed ? '»' : '«'}
           </button>
         </div>
 
-        <nav className={styles.nav}>
+        <nav className={styles.nav} aria-label="Основное меню">
           {menuItems.map((item) => (
             <NavLink
               key={item.path}
@@ -59,21 +65,23 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
               onClick={handleNavClick}
               className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
               title={collapsed ? item.label : undefined}
+              aria-label={collapsed ? item.label : undefined}
             >
-              <span className={styles.icon}>{item.icon}</span>
+              <span className={styles.icon} aria-hidden="true">{item.icon}</span>
               {!collapsed && <span>{item.label}</span>}
             </NavLink>
           ))}
         </nav>
 
-        <div className={styles.footer}>
+        <div className={styles.footer} role="navigation" aria-label="Дополнительное меню">
           <NavLink 
             to="/settings" 
             className={styles.footerItem}
             onClick={handleNavClick}
             title={collapsed ? 'Настройки' : undefined}
+            aria-label="Настройки"
           >
-            <span className={styles.icon}>⚙️</span>
+            <span className={styles.icon} aria-hidden="true">⚙️</span>
             {!collapsed && <span>Настройки</span>}
           </NavLink>
           <NavLink 
@@ -81,16 +89,19 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
             className={styles.footerItem}
             onClick={handleNavClick}
             title={collapsed ? 'Профиль' : undefined}
+            aria-label="Профиль"
           >
-            <span className={styles.icon}>👤</span>
+            <span className={styles.icon} aria-hidden="true">👤</span>
             {!collapsed && <span>Профиль</span>}
           </NavLink>
           <button 
+            type="button"
             className={styles.logoutButton} 
             onClick={handleLogout}
             title={collapsed ? 'Выйти' : undefined}
+            aria-label="Выйти из системы"
           >
-            <span className={styles.icon}>🚪</span>
+            <span className={styles.icon} aria-hidden="true">🚪</span>
             {!collapsed && <span>Выйти</span>}
           </button>
         </div>

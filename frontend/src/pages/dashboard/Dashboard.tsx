@@ -44,7 +44,7 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <AppLayout breadcrumbs={["Дашборд"]}>
+    <AppLayout>
       <div className={styles.dashboard}>
         <section className={styles.kpis}>
           {kpis.map((kpi) => (
