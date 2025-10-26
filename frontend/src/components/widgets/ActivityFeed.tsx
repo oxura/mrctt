@@ -30,10 +30,14 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ items, loading }) => {
       status_change: 'Смена статуса лида',
       note_added: 'Добавлен комментарий',
       task_completed: 'Задача выполнена',
+      task_created: 'Создана задача',
       lead_created: 'Новый лид',
+      lead_assigned: 'Лид назначен менеджеру',
+      lead_updated: 'Лид обновлен',
+      comment_added: 'Добавлен комментарий',
     };
 
-    return mapping[type] || type.replace(/_/g, ' ');
+    return mapping[type] || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   };
 
   if (loading) {
