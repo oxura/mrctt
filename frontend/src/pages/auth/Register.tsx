@@ -34,10 +34,12 @@ const Register: React.FC = () => {
   const handleChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const { name, value, type, checked } = event.target;
+    const { name, value, type } = event.target;
+    const isCheckbox = type === 'checkbox';
+    const checked = isCheckbox ? (event.target as HTMLInputElement).checked : undefined;
     setForm((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: isCheckbox ? Boolean(checked) : value,
       ...(name === 'companyName' &&
         !prev.companySlug && {
           companySlug: slugify(value),

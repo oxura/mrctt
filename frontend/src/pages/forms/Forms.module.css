@@ -1,0 +1,44 @@
+.forms {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.addButton {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.25);
+}
+
+.placeholder {
+  background-color: #fff;
+  border-radius: 16px;
+  padding: 28px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.placeholder p {
+  margin: 0;
+  color: #475569;
+  font-size: 15px;
+}
+
+.placeholder p:first-child {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
