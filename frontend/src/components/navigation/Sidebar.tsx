@@ -1,16 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import type { TenantSettingsModules } from '../../types';
 import styles from './Sidebar.module.css';
 
-const menuItems = [
+interface MenuItem {
+  path: string;
+  label: string;
+  icon: string;
+  moduleKey?: keyof TenantSettingsModules;
+}
+
+const allMenuItems: MenuItem[] = [
   { path: '/dashboard', label: 'Главная', icon: '🏠' },
   { path: '/leads', label: 'Лиды', icon: '📋' },
-  { path: '/products', label: 'Продукты', icon: '🛒' },
-  { path: '/groups', label: 'Группы', icon: '👥' },
+  { path: '/products', label: 'Продукты', icon: '🛒', moduleKey: 'products' },
+  { path: '/groups', label: 'Группы', icon: '👥', moduleKey: 'groups' },
   { path: '/forms', label: 'Формы', icon: '📝' },
-  { path: '/tasks', label: 'Задачи', icon: '🗓️' },
-  { path: '/team', label: 'Команда', icon: '👨‍💼' },
+  { path: '/tasks', label: 'Задачи', icon: '🗓️', moduleKey: 'tasks' },
+  { path: '/team', label: 'Команда', icon: '👨‍💼', moduleKey: 'team' },
 ];
 
 interface SidebarProps {
@@ -22,6 +30,19 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
   const [collapsed, setCollapsed] = useState(false);
   const { tenant, clear } = useAuthStore();
   const navigate = useNavigate();
+
+  const menuItems = useMemo(() => {
+    const modules = tenant?.settings?.modules as TenantSettingsModules | undefined;
+    
+    if (!modules || typeof modules !== 'object') {
+      return allMenuItems;
+    }
+
+    return allMenuItems.filter((item) => {
+      if (!item.moduleKey) return true;
+      return modules[item.moduleKey] === true;
+    });
+  }, [tenant?.settings?.modules]);
 
   const handleLogout = () => {
     clear();
