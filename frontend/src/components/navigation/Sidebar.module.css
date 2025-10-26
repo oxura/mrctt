@@ -154,6 +154,41 @@
     top: 0;
     left: 0;
     bottom: 0;
+    width: 260px;
     transform: translateX(-110%);
+  }
+
+  .sidebar.collapsed {
+    width: 260px;
+  }
+
+  .toggleButton {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .sidebar {
+    width: 280px;
+    max-width: 85vw;
+  }
+
+  .header {
+    padding: 18px;
+  }
+
+  .logoText {
+    font-size: 16px;
+  }
+
+  .navItem,
+  .footerItem {
+    padding: 14px 16px;
+    font-size: 15px;
+  }
+
+  .logoutButton {
+    padding: 14px 16px;
+    font-size: 14px;
   }
 }

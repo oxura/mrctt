@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Topbar.module.css';
 import { useAuthStore } from '../../store/authStore';
 import { searchLeads } from '../../data/globalSearchData';
+import { useClickOutside } from '../../hooks/useClickOutside';
 
 interface TopbarProps {
   breadcrumbs?: string[];
@@ -21,39 +22,65 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLFormElement>(null);
 
+  const hasSearchResults = searchResults.length > 0;
+
+  const closeNotifications = useCallback(() => setShowNotifications(false), []);
+  const closeUserMenu = useCallback(() => setShowUserMenu(false), []);
+  const closeSearchResults = useCallback(() => setShowSearchResults(false), []);
+
+  const closeAllMenus = useCallback(() => {
+    closeSearchResults();
+    closeNotifications();
+    closeUserMenu();
+  }, [closeNotifications, closeUserMenu, closeSearchResults]);
+
+  useClickOutside(notificationsRef, closeNotifications, showNotifications);
+  useClickOutside(userMenuRef, closeUserMenu, showUserMenu);
+  useClickOutside(searchRef, closeSearchResults, showSearchResults);
+
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
-        setShowNotifications(false);
-      }
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
-        setShowUserMenu(false);
-      }
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowSearchResults(false);
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeAllMenus();
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    document.addEventListener('keydown', handleEscapeKey);
+    return () => document.removeEventListener('keydown', handleEscapeKey);
+  }, [closeAllMenus]);
 
   useEffect(() => {
-    if (searchQuery.trim().length > 0) {
-      const query = searchQuery.toLowerCase();
-      const results = searchLeads.filter(
-        (lead) =>
-          lead.name.toLowerCase().includes(query) ||
-          lead.phone.includes(query) ||
-          lead.id.toLowerCase().includes(query)
-      );
-      setSearchResults(results);
+    const debounceTimer = setTimeout(() => {
+      if (searchQuery.trim().length > 0) {
+        const query = searchQuery.toLowerCase();
+        const results = searchLeads.filter(
+          (lead) =>
+            lead.name.toLowerCase().includes(query) ||
+            lead.phone.includes(query) ||
+            lead.id.toLowerCase().includes(query)
+        );
+        setSearchResults(results);
+        setShowSearchResults(true);
+        if (results.length > 0) {
+          closeNotifications();
+          closeUserMenu();
+        }
+      } else {
+        setSearchResults([]);
+        setShowSearchResults(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery, closeNotifications, closeUserMenu]);
+
+  const handleSearchFocus = useCallback(() => {
+    if (hasSearchResults) {
       setShowSearchResults(true);
-    } else {
-      setSearchResults([]);
-      setShowSearchResults(false);
     }
-  }, [searchQuery]);
+    closeNotifications();
+    closeUserMenu();
+  }, [hasSearchResults, closeNotifications, closeUserMenu]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +89,12 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
       setSearchQuery('');
       setShowSearchResults(false);
     }
+  };
+
+  const handleSearchResultSelect = (leadId: string) => {
+    navigate(`/leads?lead=${encodeURIComponent(leadId)}`);
+    setSearchQuery('');
+    setShowSearchResults(false);
   };
 
   const handleLogout = () => {
@@ -80,33 +113,48 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
   return (
     <header className={styles.topbar}>
       <div className={styles.leftSection}>
-        <button className={styles.mobileMenuButton} onClick={onMenuClick} title="Меню">
+        <button 
+          className={styles.mobileMenuButton} 
+          onClick={onMenuClick} 
+          title="Меню"
+          aria-label="Открыть меню навигации"
+        >
           ☰
         </button>
-        <nav className={styles.breadcrumbs}>
+        <nav className={styles.breadcrumbs} aria-label="Хлебные крошки">
           <span>Главная</span>
           {breadcrumbs.map((crumb, index) => (
             <React.Fragment key={index}>
-              <span className={styles.separator}>/</span>
+              <span className={styles.separator} aria-hidden="true">/</span>
               <span>{crumb}</span>
             </React.Fragment>
           ))}
         </nav>
-        <form className={styles.searchWrapper} onSubmit={handleSearch} ref={searchRef}>
+        <form 
+          className={styles.searchWrapper} 
+          onSubmit={handleSearch} 
+          ref={searchRef}
+          role="search"
+        >
           <div className={styles.searchContainer}>
-            <span className={styles.searchIcon}>🔍</span>
+            <span className={styles.searchIcon} aria-hidden="true">🔍</span>
             <input 
               type="text" 
               placeholder="Поиск по лидам, телефонам..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => searchResults.length && setShowSearchResults(true)}
+              onFocus={handleSearchFocus}
+              aria-label="Глобальный поиск по лидам и телефонам"
+              aria-autocomplete="list"
+              aria-controls={showSearchResults ? 'search-results' : undefined}
+              aria-expanded={showSearchResults}
             />
             {searchQuery && (
               <button 
                 type="button" 
                 className={styles.clearButton}
                 onClick={() => setSearchQuery('')}
+                aria-label="Очистить поиск"
               >
                 ✕
               </button>
@@ -114,24 +162,34 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
           </div>
 
           {showSearchResults && (
-            <div className={styles.searchDropdown}>
+            <div 
+              className={styles.searchDropdown}
+              id="search-results"
+              role="listbox"
+              aria-label="Результаты поиска"
+            >
               {searchResults.length === 0 ? (
-                <div className={styles.emptyState}>Ничего не найдено</div>
+                <div className={styles.emptyState} role="status" aria-live="polite">Ничего не найдено</div>
               ) : (
                 <>
                   <div className={styles.searchHeader}>
                     <span>Лиды</span>
                     <button type="submit">Открыть все</button>
                   </div>
-                  <ul className={styles.searchResults}>
+                  <ul className={styles.searchResults} role="presentation">
                     {searchResults.map((result) => (
                       <li
                         key={result.id}
                         className={styles.searchResult}
-                        onClick={() => {
-                          navigate(`/leads?lead=${encodeURIComponent(result.id)}`);
-                          setSearchQuery('');
-                          setShowSearchResults(false);
+                        onClick={() => handleSearchResultSelect(result.id)}
+                        role="option"
+                        aria-selected="false"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleSearchResultSelect(result.id);
+                          }
                         }}
                       >
                         <div className={styles.resultMain}>
@@ -142,6 +200,9 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
                           <span className={styles.resultStatus}>{result.status}</span>
                           <span className={styles.resultManager}>{result.manager}</span>
                         </div>
+                        {result.product && (
+                          <div className={styles.resultProduct}>{result.product}</div>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -155,24 +216,38 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
       <div className={styles.rightSection}>
         <div className={styles.notificationsWrapper} ref={notificationsRef}>
           <button 
+            type="button"
             className={styles.iconButton} 
-            onClick={() => setShowNotifications(!showNotifications)}
+            onClick={() => {
+              setShowNotifications((prev) => {
+                const next = !prev;
+                if (next) {
+                  closeSearchResults();
+                  closeUserMenu();
+                }
+                return next;
+              });
+            }}
             title="Уведомления"
+            aria-label={`Уведомления${unreadCount > 0 ? ` (${unreadCount} непрочитанных)` : ''}`}
+            aria-expanded={showNotifications}
+            aria-haspopup="true"
           >
             🔔
-            {unreadCount > 0 && <span className={styles.badge}>{unreadCount}</span>}
+            {unreadCount > 0 && <span className={styles.badge} aria-label={`${unreadCount} непрочитанных`}>{unreadCount}</span>}
           </button>
           {showNotifications && (
-            <div className={styles.dropdown}>
+            <div className={styles.dropdown} role="menu" aria-label="Уведомления">
               <div className={styles.dropdownHeader}>
                 <h3>Уведомления</h3>
-                <button className={styles.markAllRead}>Прочитать все</button>
+                <button type="button" className={styles.markAllRead}>Прочитать все</button>
               </div>
               <div className={styles.notificationsList}>
                 {notifications.map(notification => (
                   <div 
                     key={notification.id} 
                     className={`${styles.notificationItem} ${notification.unread ? styles.unread : ''}`}
+                    role="menuitem"
                   >
                     <div className={styles.notificationContent}>
                       <div className={styles.notificationTitle}>{notification.title}</div>
@@ -183,46 +258,59 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
                 ))}
               </div>
               <div className={styles.dropdownFooter}>
-                <button onClick={() => navigate('/notifications')}>Все уведомления</button>
+                <button type="button" onClick={() => navigate('/notifications')}>Все уведомления</button>
               </div>
             </div>
           )}
         </div>
 
         <div className={styles.userMenuWrapper} ref={userMenuRef}>
-          <div 
+          <button 
+            type="button"
             className={styles.userProfile} 
-            onClick={() => setShowUserMenu(!showUserMenu)}
+            onClick={() => {
+              setShowUserMenu((prev) => {
+                const next = !prev;
+                if (next) {
+                  closeSearchResults();
+                  closeNotifications();
+                }
+                return next;
+              });
+            }}
+            aria-haspopup="true"
+            aria-expanded={showUserMenu}
+            title="Меню пользователя"
           >
-            <div className={styles.avatar}>
+            <span className={styles.avatar}>
               {user?.first_name?.[0]?.toUpperCase() || user?.email[0]?.toUpperCase()}
-            </div>
-            <div className={styles.userInfo}>
+            </span>
+            <span className={styles.userInfo}>
               <span className={styles.userName}>{user?.first_name || user?.email}</span>
               <span className={styles.userRole}>{user?.role}</span>
-            </div>
-            <span className={styles.chevron}>{showUserMenu ? '▲' : '▼'}</span>
-          </div>
+            </span>
+            <span className={styles.chevron} aria-hidden="true">{showUserMenu ? '▲' : '▼'}</span>
+          </button>
           {showUserMenu && (
-            <div className={styles.dropdown}>
+            <div className={styles.dropdown} role="menu" aria-label="Меню пользователя">
               <div className={styles.userMenuHeader}>
-                <div className={styles.avatar}>
+                <span className={styles.avatar}>
                   {user?.first_name?.[0]?.toUpperCase() || user?.email[0]?.toUpperCase()}
-                </div>
+                </span>
                 <div>
                   <div className={styles.menuUserName}>{user?.first_name || user?.email}</div>
                   <div className={styles.menuUserEmail}>{user?.email}</div>
                 </div>
               </div>
               <div className={styles.menuDivider}></div>
-              <button className={styles.menuItem} onClick={() => { navigate('/profile'); setShowUserMenu(false); }}>
+              <button type="button" className={styles.menuItem} onClick={() => { navigate('/profile'); setShowUserMenu(false); }}>
                 <span>👤</span> Профиль
               </button>
-              <button className={styles.menuItem} onClick={() => { navigate('/settings'); setShowUserMenu(false); }}>
+              <button type="button" className={styles.menuItem} onClick={() => { navigate('/settings'); setShowUserMenu(false); }}>
                 <span>⚙️</span> Настройки
               </button>
               <div className={styles.menuDivider}></div>
-              <button className={`${styles.menuItem} ${styles.logoutItem}`} onClick={handleLogout}>
+              <button type="button" className={`${styles.menuItem} ${styles.logoutItem}`} onClick={handleLogout}>
                 <span>🚪</span> Выйти
               </button>
             </div>

@@ -178,6 +178,13 @@
   color: #9ca3af;
 }
 
+.resultProduct {
+  font-size: 12px;
+  color: #6366f1;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
 .emptyState {
   padding: 24px;
   text-align: center;
@@ -436,6 +443,20 @@
   }
 }
 
+@media (max-width: 768px) {
+  .searchWrapper {
+    min-width: 240px;
+    max-width: 320px;
+  }
+
+  .searchDropdown {
+    left: -100px;
+    right: auto;
+    width: 340px;
+    max-width: 90vw;
+  }
+}
+
 @media (max-width: 640px) {
   .topbar {
     padding: 0 14px;
@@ -458,5 +479,24 @@
   .dropdown {
     width: calc(100vw - 24px);
     right: 12px;
+  }
+
+  .notificationsWrapper .dropdown {
+    max-height: 60vh;
+  }
+
+  .userProfile {
+    padding: 6px;
+  }
+
+  .avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .iconButton {
+    padding: 6px 10px;
+    font-size: 20px;
   }
 }
