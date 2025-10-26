@@ -16,6 +16,14 @@ const niches = [
 
 type ModuleId = 'products' | 'groups' | 'tasks' | 'team';
 
+type CompanyInfo = {
+  name: string;
+  logo: string;
+  country: string;
+  city: string;
+  slug: string;
+};
+
 const defaultModules: ModuleId[] = ['products', 'tasks'];
 
 const modulePresets: Record<string, ModuleId[]> = {
@@ -33,14 +41,26 @@ const moduleOptions: { id: ModuleId; label: string }[] = [
   { id: 'team', label: 'Модуль: Команда' },
 ];
 
+const slugify = (value: string): string =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+const workspaceDomain = 'ecosystem.app';
+
 const OnboardingWizard: React.FC = () => {
   const [step, setStep] = useState(1);
-  const [companyInfo, setCompanyInfo] = useState({
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     name: '',
     logo: '',
     country: '',
     city: '',
+    slug: '',
   });
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [selectedNiche, setSelectedNiche] = useState<string | null>(null);
   const [modules, setModules] = useState<ModuleId[]>(defaultModules);
   const [loading, setLoading] = useState(false);
@@ -53,11 +73,15 @@ const OnboardingWizard: React.FC = () => {
   useEffect(() => {
     if (tenant && !isPrefilled.current) {
       isPrefilled.current = true;
+
+      const initialSlug = tenant.slug || slugify(tenant.name || '');
+
       setCompanyInfo({
         name: tenant.name || '',
         logo: tenant.logo_url || '',
         country: tenant.country || '',
         city: tenant.city || '',
+        slug: initialSlug,
       });
 
       if (tenant.industry) {
@@ -76,19 +100,78 @@ const OnboardingWizard: React.FC = () => {
       } else {
         setModules([...defaultModules]);
       }
+
+      setSlugManuallyEdited(
+        Boolean(initialSlug && tenant.name && initialSlug !== slugify(tenant.name || ''))
+      );
     }
   }, [tenant]);
+
+  const handleCompanyInfoChange = (
+    field: keyof Omit<CompanyInfo, 'slug'>,
+    value: string
+  ) => {
+    setCompanyInfo((prev) => {
+      if (field === 'name') {
+        const nextName = value;
+        const autoSlug = slugify(nextName);
+        const previousAutoSlug = slugify(prev.name || '');
+        const shouldAutoUpdateSlug = !slugManuallyEdited || prev.slug === previousAutoSlug;
+
+        if (shouldAutoUpdateSlug) {
+          setSlugManuallyEdited(false);
+        }
+
+        return {
+          ...prev,
+          name: nextName,
+          ...(shouldAutoUpdateSlug ? { slug: autoSlug } : {}),
+        };
+      }
+
+      return { ...prev, [field]: value };
+    });
+
+    if (error) {
+      setError(null);
+    }
+  };
+
+  const handleSlugChange = (value: string) => {
+    const sanitized = slugify(value);
+    setCompanyInfo((prev) => ({ ...prev, slug: sanitized }));
+    setSlugManuallyEdited(true);
+    if (error) {
+      setError(null);
+    }
+  };
 
   const handleNext = () => {
     if (step === 1) {
       const trimmedName = companyInfo.name.trim();
+      const sanitizedSlug = slugify(companyInfo.slug);
+
       if (!trimmedName) {
         setError('Название компании обязательно');
         return;
       }
 
-      if (trimmedName !== companyInfo.name) {
-        setCompanyInfo((prev) => ({ ...prev, name: trimmedName }));
+      if (!sanitizedSlug) {
+        setError('Адрес рабочей области обязателен');
+        return;
+      }
+
+      if (sanitizedSlug.length < 3) {
+        setError('Адрес рабочей области должен содержать минимум 3 символа');
+        return;
+      }
+
+      if (trimmedName !== companyInfo.name || sanitizedSlug !== companyInfo.slug) {
+        setCompanyInfo((prev) => ({
+          ...prev,
+          name: trimmedName,
+          slug: sanitizedSlug,
+        }));
       }
     }
 
@@ -115,9 +198,16 @@ const OnboardingWizard: React.FC = () => {
     const trimmedName = companyInfo.name.trim();
     const trimmedCountry = companyInfo.country.trim();
     const trimmedCity = companyInfo.city.trim();
+    const sanitizedSlug = slugify(companyInfo.slug);
 
     if (!trimmedName) {
       setError('Название компании обязательно');
+      setStep(1);
+      return;
+    }
+
+    if (!sanitizedSlug || sanitizedSlug.length < 3) {
+      setError('Корректно заполните адрес рабочей области');
       setStep(1);
       return;
     }
@@ -127,6 +217,7 @@ const OnboardingWizard: React.FC = () => {
       name: trimmedName,
       country: trimmedCountry,
       city: trimmedCity,
+      slug: sanitizedSlug,
     }));
 
     setLoading(true);
@@ -135,6 +226,7 @@ const OnboardingWizard: React.FC = () => {
     try {
       const response = await api.patch('/api/v1/tenants/current/onboarding', {
         name: trimmedName,
+        slug: sanitizedSlug,
         logo_url: companyInfo.logo || null,
         country: trimmedCountry || undefined,
         city: trimmedCity || undefined,
@@ -160,20 +252,12 @@ const OnboardingWizard: React.FC = () => {
     }
   };
 
-  const handleCompanyInfoChange = (field: 'name' | 'country' | 'city' | 'logo', value: string) => {
-    setCompanyInfo((prev) => ({ ...prev, [field]: value }));
-    if (error) {
-      setError(null);
-    }
-  };
-
   const handleNicheSelect = (niche: string) => {
     setSelectedNiche(niche);
     const presetModules = modulePresets[niche];
     setModules(presetModules ? [...presetModules] : [...defaultModules]);
     setError(null);
   };
-
 
   const toggleModule = (moduleId: ModuleId) => {
     const nextModules = modules.includes(moduleId)
@@ -206,11 +290,18 @@ const OnboardingWizard: React.FC = () => {
 
       const reader = new FileReader();
       reader.onloadend = () => {
-        handleCompanyInfoChange('logo', reader.result as string);
+        setCompanyInfo((prev) => ({ ...prev, logo: reader.result as string }));
+        if (error) {
+          setError(null);
+        }
       };
       reader.readAsDataURL(file);
     }
   };
+
+  const workspacePreview = companyInfo.slug
+    ? `https://${companyInfo.slug}.${workspaceDomain}`
+    : `https://ваша-компания.${workspaceDomain}`;
 
   return (
     <AppLayout breadcrumbs={['Онбординг']}>
@@ -251,6 +342,27 @@ const OnboardingWizard: React.FC = () => {
                   required
                 />
               </label>
+
+              <label>
+                Адрес рабочей области <span className={styles.required}>*</span>
+                <div className={styles.slugField}>
+                  <input
+                    type="text"
+                    value={companyInfo.slug}
+                    onChange={(e) => handleSlugChange(e.target.value)}
+                    placeholder="naprimer-company"
+                    maxLength={60}
+                    autoComplete="off"
+                    required
+                  />
+                  <span className={styles.slugSuffix}>.{workspaceDomain}</span>
+                </div>
+                <span className={styles.fieldHint}>
+                  Только латинские буквы, цифры и дефисы. Используется для входа и публичных ссылок.
+                </span>
+                <span className={styles.slugPreview}>{workspacePreview}</span>
+              </label>
+
               <label>
                 Страна
                 <input

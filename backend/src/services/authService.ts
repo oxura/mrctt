@@ -6,16 +6,18 @@ import { UserRepository } from '../repositories/userRepository';
 import { TenantRepository } from '../repositories/tenantRepository';
 import { emailService } from './emailService';
 
+const normalizeSlug = (value: string): string =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
 interface RegisterData {
   email: string;
   password: string;
-  firstName?: string;
-  lastName?: string;
-  companyName: string;
-  companySlug: string;
-  country?: string;
-  city?: string;
-  industry?: string;
+  firstName: string;
 }
 
 interface LoginData {
@@ -34,14 +36,6 @@ export class AuthService {
   }
 
   async register(data: RegisterData) {
-    const normalizedSlug = data.companySlug.trim().toLowerCase();
-
-    const existingTenant = await this.tenantRepo.findBySlug(normalizedSlug);
-
-    if (existingTenant) {
-      throw new AppError('Company slug already exists', 409);
-    }
-
     const existingUser = await this.userRepo.findByEmailGlobal(data.email);
 
     if (existingUser) {
@@ -49,13 +43,25 @@ export class AuthService {
     }
 
     const result = await withTransaction(async (client) => {
+      const baseName = data.firstName ? `Компания ${data.firstName}` : 'Новая компания';
+      const emailUsername = data.email.split('@')[0];
+      const baseSlugCandidate = normalizeSlug(emailUsername);
+      const slugSeed = baseSlugCandidate || 'workspace';
+      
+      let slug = slugSeed;
+      let slugCounter = 0;
+      let existingTenant = await this.tenantRepo.findBySlug(slug, client);
+
+      while (existingTenant) {
+        slugCounter++;
+        slug = `${slugSeed}-${slugCounter}`;
+        existingTenant = await this.tenantRepo.findBySlug(slug, client);
+      }
+
       const tenant = await this.tenantRepo.create(
         {
-          name: data.companyName,
-          slug: normalizedSlug,
-          country: data.country,
-          city: data.city,
-          industry: data.industry,
+          name: baseName,
+          slug: slug,
         },
         client
       );
@@ -68,7 +74,6 @@ export class AuthService {
           email: data.email,
           password_hash: passwordHash,
           first_name: data.firstName,
-          last_name: data.lastName,
         },
         client
       );
