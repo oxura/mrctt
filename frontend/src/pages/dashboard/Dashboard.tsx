@@ -3,44 +3,65 @@ import AppLayout from '../../layouts/AppLayout';
 import KpiCard from '../../components/widgets/KpiCard';
 import ActivityFeed from '../../components/widgets/ActivityFeed';
 import TaskList from '../../components/widgets/TaskList';
+import LeadsChart from '../../components/widgets/LeadsChart';
+import { useDashboardStats, useLeadsChart, useActivityFeed, useMyTasks } from '../../hooks/useDashboard';
 import styles from './Dashboard.module.css';
 
 const Dashboard: React.FC = () => {
+  const { stats, loading: statsLoading } = useDashboardStats();
+  const { chartData, loading: chartLoading } = useLeadsChart(30);
+  const { activities, loading: activitiesLoading } = useActivityFeed(10);
+  const { tasks, loading: tasksLoading, updateTaskCompletion } = useMyTasks();
+
+  const handleToggleTask = async (taskId: string, isCompleted: boolean) => {
+    try {
+      await updateTaskCompletion(taskId, isCompleted);
+    } catch (error) {
+      console.error('Failed to update task:', error);
+    }
+  };
+
+  const formatCurrency = (amount: number, currency: string) => {
+    const currencySymbols: Record<string, string> = {
+      USD: '$',
+      EUR: '€',
+      RUB: '₽',
+      GBP: '£',
+    };
+    const symbol = currencySymbols[currency] || currency;
+    return `${symbol}${amount.toLocaleString('ru-RU')}`;
+  };
+
+  const getPercentageDisplay = (percent: number) => {
+    if (percent > 0) return `+${percent}%`;
+    return `${percent}%`;
+  };
+
   const kpis = [
-    { label: 'Новые лиды', value: '24', trend: '+12% к вчера', trendDirection: 'up' as const },
-    { label: 'В работе', value: '63', trend: '+5% к прошлой неделе', trendDirection: 'up' as const },
-    { label: 'Продажи (мес)', value: '₽480 000', trend: '+18% к прошлому месяцу', trendDirection: 'up' as const },
-    { label: 'Просроченные задачи', value: '3', trend: '-1 за сегодня', trendDirection: 'down' as const },
-  ];
-
-  const activities = [
     {
-      id: '1',
-      title: 'Статус лида изменен на «Оплачено»',
-      description: 'Лид Иван Петров переведен в успешные сделки',
-      timestamp: '10 минут назад',
-      actor: 'Менеджер Анна',
+      label: 'Новые лиды',
+      value: statsLoading ? '...' : stats?.newLeads?.today.toString() || '0',
+      trend: statsLoading ? '' : `${getPercentageDisplay(stats?.newLeads?.percentChange || 0)} к вчера`,
+      trendDirection: statsLoading ? 'neutral' as const : (stats?.newLeads?.percentChange || 0) >= 0 ? 'up' as const : 'down' as const,
     },
     {
-      id: '2',
-      title: 'Новая заявка с лендинга',
-      description: 'Новый лид для продукта «Курс по дизайну»',
-      timestamp: '30 минут назад',
-      actor: 'Форма «Дизайн-2024»',
+      label: 'В работе',
+      value: statsLoading ? '...' : stats?.activeDeals?.count.toString() || '0',
+      trend: '',
+      trendDirection: 'neutral' as const,
     },
     {
-      id: '3',
-      title: 'Комментарий к лиду',
-      description: '«Думает до завтра, назначить повторный звонок»',
-      timestamp: '1 час назад',
-      actor: 'Менеджер Олег',
+      label: 'Продажи (мес)',
+      value: statsLoading ? '...' : formatCurrency(stats?.sales?.totalAmount || 0, stats?.sales?.currency || 'USD'),
+      trend: '',
+      trendDirection: 'neutral' as const,
     },
-  ];
-
-  const tasks = [
-    { id: '1', title: 'Перезвонить Марии по предложению «Курс UX»', dueDate: '14:00', lead: 'Мария Сидорова', completed: false },
-    { id: '2', title: 'Подготовить КП для тура в Грузию', dueDate: '16:30', lead: 'ООО «Путешествуем вместе»', completed: false },
-    { id: '3', title: 'Проверить оплату по счету №457', dueDate: '18:00', lead: 'ИП Алексеев', completed: true },
+    {
+      label: 'Просроченные задачи',
+      value: statsLoading ? '...' : stats?.overdueTasks?.count.toString() || '0',
+      trend: '',
+      trendDirection: (stats?.overdueTasks?.count || 0) > 0 ? 'down' as const : 'neutral' as const,
+    },
   ];
 
   return (
@@ -54,30 +75,19 @@ const Dashboard: React.FC = () => {
 
         <section className={styles.mainContent}>
           <div className={styles.chartArea}>
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <h3>Поступление лидов (30 дней)</h3>
-                <select>
-                  <option>Все источники</option>
-                  <option>Мета-реклама</option>
-                  <option>Telegram</option>
-                </select>
-              </div>
-              <div className={styles.placeholderChart}>График будет здесь</div>
-            </div>
-
-            <ActivityFeed items={activities} />
+            <LeadsChart data={chartData} loading={chartLoading} />
+            <ActivityFeed items={activities} loading={activitiesLoading} />
           </div>
 
           <div className={styles.sideColumn}>
-            <TaskList tasks={tasks} />
+            <TaskList tasks={tasks} loading={tasksLoading} onToggleTask={handleToggleTask} />
             <div className={styles.card}>
               <h3>Статус по модулям</h3>
               <ul className={styles.moduleList}>
-                <li>✔️ CRM Pipeline</li>
-                <li>✔️ Конструктор форм</li>
+                <li>✔️ Dashboard & Analytics</li>
+                <li>✔️ Управление лидами</li>
+                <li>✔️ Задачи и календарь</li>
                 <li>✔️ Команда и роли</li>
-                <li>⏳ Модуль задач (в разработке)</li>
               </ul>
             </div>
           </div>

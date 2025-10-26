@@ -46,6 +46,22 @@
   font-weight: 500;
 }
 
+.titleCompleted {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.loadingState,
+.emptyState {
+  padding: 20px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+}
+
 .meta {
   display: flex;
   gap: 12px;
