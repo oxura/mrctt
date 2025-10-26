@@ -8,6 +8,15 @@ import Dashboard from './pages/dashboard/Dashboard';
 import OnboardingWizard from './pages/onboarding/OnboardingWizard';
 import Landing from './pages/landing/Landing';
 import ProtectedRoute from './routes/ProtectedRoute';
+import Leads from './pages/leads/Leads';
+import Products from './pages/products/Products';
+import Groups from './pages/groups/Groups';
+import Forms from './pages/forms/Forms';
+import Tasks from './pages/tasks/Tasks';
+import Team from './pages/team/Team';
+import Settings from './pages/settings/Settings';
+import Profile from './pages/profile/Profile';
+import Notifications from './pages/notifications/Notifications';
 import { useAuthStore } from './store/authStore';
 
 const App: React.FC = () => {
@@ -23,6 +32,15 @@ const App: React.FC = () => {
 
       <Route element={<ProtectedRoute />}> 
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/leads" element={<Leads />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/groups" element={<Groups />} />
+        <Route path="/forms" element={<Forms />} />
+        <Route path="/tasks" element={<Tasks />} />
+        <Route path="/team" element={<Team />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/onboarding" element={<OnboardingWizard />} />
       </Route>
 
