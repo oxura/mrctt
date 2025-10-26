@@ -3,37 +3,71 @@ import styles from './ActivityFeed.module.css';
 
 interface ActivityItem {
   id: string;
-  title: string;
-  timestamp: string;
+  type: string;
   description: string;
-  actor: string;
-  avatar?: string;
+  actor_name: string;
+  created_at: string;
 }
 
 interface ActivityFeedProps {
   items: ActivityItem[];
+  loading?: boolean;
 }
 
-const ActivityFeed: React.FC<ActivityFeedProps> = ({ items }) => {
+const ActivityFeed: React.FC<ActivityFeedProps> = ({ items, loading }) => {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('ru-RU', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const formatTitle = (type: string) => {
+    const mapping: Record<string, string> = {
+      status_change: 'Смена статуса лида',
+      note_added: 'Добавлен комментарий',
+      task_completed: 'Задача выполнена',
+      lead_created: 'Новый лид',
+    };
+
+    return mapping[type] || type.replace(/_/g, ' ');
+  };
+
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <h3>Лента событий</h3>
+        <div className={styles.loadingState}>Загрузка ленты...</div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.container}>
       <h3>Лента событий</h3>
-      <div className={styles.list}>
-        {items.map((item) => (
-          <div key={item.id} className={styles.item}>
-            <div className={styles.avatar}>{item.avatar || item.actor[0]}</div>
-            <div className={styles.content}>
-              <div className={styles.title}>{item.title}</div>
-              <div className={styles.description}>{item.description}</div>
-              <div className={styles.meta}>
-                <span>{item.actor}</span>
-                <span>•</span>
-                <time>{item.timestamp}</time>
+      {items.length === 0 ? (
+        <div className={styles.emptyState}>Пока нет активности</div>
+      ) : (
+        <div className={styles.list}>
+          {items.map((item) => (
+            <div key={item.id} className={styles.item}>
+              <div className={styles.avatar}>{item.actor_name?.[0] || 'С'}</div>
+              <div className={styles.content}>
+                <div className={styles.title}>{formatTitle(item.type)}</div>
+                {item.description && <div className={styles.description}>{item.description}</div>}
+                <div className={styles.meta}>
+                  <span>{item.actor_name}</span>
+                  <span>•</span>
+                  <time>{formatDate(item.created_at)}</time>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

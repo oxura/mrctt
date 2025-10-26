@@ -11,6 +11,16 @@
   font-weight: 600;
 }
 
+.loadingState,
+.emptyState {
+  padding: 20px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+}
+
 .list {
   display: flex;
   flex-direction: column;
