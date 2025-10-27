@@ -35,7 +35,29 @@ export const tenantGuard = async (req: Request, res: Response, next: NextFunctio
         }
         req.tenantId = resolvedTenant;
       } else {
-        req.tenantId = req.user.tenant_id || undefined;
+        const userTenantId = req.user.tenant_id;
+        if (!userTenantId) {
+          throw new AppError('User has no associated tenant', 403);
+        }
+
+        if (resolvedTenant) {
+          const tenantCheckResult = await pool.query(
+            'SELECT id FROM tenants WHERE (id::text = $1 OR slug = $1) AND is_active = true',
+            [resolvedTenant]
+          );
+
+          if (tenantCheckResult.rows.length === 0) {
+            throw new AppError('Tenant not found or inactive', 404);
+          }
+
+          const resolvedTenantId = tenantCheckResult.rows[0].id;
+
+          if (resolvedTenantId !== userTenantId) {
+            throw new AppError('Access denied: cannot access other tenant resources', 403);
+          }
+        }
+
+        req.tenantId = userTenantId;
       }
     } else if (resolvedTenant) {
       req.tenantId = resolvedTenant;
@@ -56,7 +78,6 @@ export const tenantGuard = async (req: Request, res: Response, next: NextFunctio
 
     const tenant = tenantResult.rows[0] as Tenant;
 
-    // Replace tenantId with canonical ID for downstream usage
     req.tenantId = tenant.id;
 
     res.locals.tenant = tenant;

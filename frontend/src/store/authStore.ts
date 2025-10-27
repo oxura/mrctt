@@ -3,42 +3,41 @@ import { persist } from 'zustand/middleware';
 import { Tenant, User } from '../types';
 
 interface AuthState {
-  token: string | null;
   user: User | null;
   tenant: Tenant | null;
+  csrfToken: string | null;
   isAuthenticated: boolean;
-  setAuth: (payload: { token: string; user: User; tenant: Tenant }) => void;
+  setAuth: (payload: { user: User; tenant: Tenant; csrfToken?: string | null }) => void;
   updateTenant: (tenant: Tenant) => void;
+  setCsrfToken: (token: string | null) => void;
   clear: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      token: null,
       user: null,
       tenant: null,
+      csrfToken: null,
       isAuthenticated: false,
-      setAuth: ({ token, user, tenant }) => {
-        localStorage.setItem('auth_token', token);
-        localStorage.setItem('tenant_id', tenant.id);
-        set({ token, user, tenant, isAuthenticated: true });
+      setAuth: ({ user, tenant, csrfToken }) => {
+        set({ user, tenant, csrfToken: csrfToken ?? null, isAuthenticated: true });
       },
       updateTenant: (tenant) => {
-        localStorage.setItem('tenant_id', tenant.id);
         set((state) => ({ ...state, tenant }));
       },
+      setCsrfToken: (token) => {
+        set((state) => ({ ...state, csrfToken: token }));
+      },
       clear: () => {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('tenant_id');
-        set({ token: null, user: null, tenant: null, isAuthenticated: false });
+        set({ user: null, tenant: null, csrfToken: null, isAuthenticated: false });
       },
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ token: state.token, user: state.user, tenant: state.tenant }),
+      partialize: (state) => ({ user: state.user, tenant: state.tenant, csrfToken: state.csrfToken }),
       onRehydrateStorage: () => (state) => {
-        if (state?.token) {
+        if (state?.user) {
           state.isAuthenticated = true;
         }
       },

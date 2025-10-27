@@ -1,10 +1,16 @@
 import { AppError } from '../utils/appError';
 import { hashPassword, verifyPassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
+import { generateRefreshToken } from '../utils/tokens';
 import { withTransaction } from '../db/client';
 import { UserRepository } from '../repositories/userRepository';
 import { TenantRepository } from '../repositories/tenantRepository';
+import { RefreshTokenRepository } from '../repositories/refreshTokenRepository';
+import { LoginAttemptRepository } from '../repositories/loginAttemptRepository';
 import { emailService } from './emailService';
+import logger from '../utils/logger';
+import { env } from '../config/env';
+import { parseDuration } from '../utils/time';
 
 const normalizeSlug = (value: string): string =>
   value
@@ -29,10 +35,14 @@ interface LoginData {
 export class AuthService {
   private userRepo: UserRepository;
   private tenantRepo: TenantRepository;
+  private refreshTokenRepo: RefreshTokenRepository;
+  private loginAttemptRepo: LoginAttemptRepository;
 
   constructor() {
     this.userRepo = new UserRepository();
     this.tenantRepo = new TenantRepository();
+    this.refreshTokenRepo = new RefreshTokenRepository();
+    this.loginAttemptRepo = new LoginAttemptRepository();
   }
 
   async register(data: RegisterData) {
@@ -103,20 +113,73 @@ export class AuthService {
     return result;
   }
 
-  async login(data: LoginData) {
+  async login(data: LoginData, ipAddress?: string) {
+    const lockout = await this.loginAttemptRepo.getLockout(data.email, data.tenantSlug);
+    if (lockout) {
+      const timeLeftMs = new Date(lockout.locked_until).getTime() - Date.now();
+      const timeLeftMin = Math.ceil(timeLeftMs / 60000);
+      throw new AppError(`Account locked due to too many failed login attempts. Try again in ${timeLeftMin} minute(s).`, 429);
+    }
+
     const tenant = await this.tenantRepo.findBySlug(data.tenantSlug);
 
     if (!tenant || !tenant.is_active) {
+      await this.loginAttemptRepo.create({
+        email: data.email,
+        tenant_slug: data.tenantSlug,
+        ip_address: ipAddress,
+        success: false,
+      });
+      const failures = await this.loginAttemptRepo.countFailedAttempts(data.email, data.tenantSlug);
+      if (failures >= 5) {
+        const lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+        await this.loginAttemptRepo.createLockout(data.email, data.tenantSlug, lockUntil);
+      }
       throw new AppError('Invalid credentials', 401);
     }
 
     const user = await this.userRepo.findByEmail(data.email, tenant.id);
 
     if (!user || !user.is_active) {
+      await this.loginAttemptRepo.create({
+        email: data.email,
+        tenant_slug: data.tenantSlug,
+        ip_address: ipAddress,
+        success: false,
+      });
+      const failures = await this.loginAttemptRepo.countFailedAttempts(data.email, data.tenantSlug);
+      if (failures >= 5) {
+        const lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+        await this.loginAttemptRepo.createLockout(data.email, data.tenantSlug, lockUntil);
+      }
       throw new AppError('Invalid credentials', 401);
     }
 
-    await verifyPassword(data.password, user.password_hash);
+    try {
+      await verifyPassword(data.password, user.password_hash);
+    } catch (error) {
+      await this.loginAttemptRepo.create({
+        email: data.email,
+        tenant_slug: data.tenantSlug,
+        ip_address: ipAddress,
+        success: false,
+      });
+      const failures = await this.loginAttemptRepo.countFailedAttempts(data.email, data.tenantSlug);
+      if (failures >= 5) {
+        const lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+        await this.loginAttemptRepo.createLockout(data.email, data.tenantSlug, lockUntil);
+      }
+      throw error;
+    }
+
+    await this.loginAttemptRepo.create({
+      email: data.email,
+      tenant_slug: data.tenantSlug,
+      ip_address: ipAddress,
+      success: true,
+    });
+
+    await this.loginAttemptRepo.clearLockout(data.email, data.tenantSlug);
 
     await this.userRepo.updateLastLogin(user.id);
 
@@ -126,6 +189,17 @@ export class AuthService {
       role: user.role,
     });
 
+    const refreshToken = generateRefreshToken();
+    const refreshTokenDuration = parseDuration(env.REFRESH_TOKEN_EXPIRES_IN || '7d');
+    const refreshExpiresAt = new Date(Date.now() + refreshTokenDuration);
+
+    await this.refreshTokenRepo.create({
+      user_id: user.id,
+      tenant_id: tenant.id,
+      token: refreshToken,
+      expires_at: refreshExpiresAt,
+    });
+
     const { password_hash: passwordHash2, ...userWithoutPassword } = user;
     void passwordHash2;
 
@@ -133,6 +207,7 @@ export class AuthService {
       user: userWithoutPassword,
       tenant,
       token,
+      refreshToken,
     };
   }
 
@@ -147,5 +222,56 @@ export class AuthService {
     void passwordHash3;
 
     return userWithoutPassword;
+  }
+
+  async refreshAccessToken(refreshToken: string, userId: string) {
+    const storedToken = await this.refreshTokenRepo.findValidByToken(refreshToken, userId);
+
+    if (!storedToken) {
+      throw new AppError('Invalid or expired refresh token', 401);
+    }
+
+    await this.refreshTokenRepo.revokeToken(storedToken.id);
+
+    const user = await this.userRepo.findById(userId);
+    if (!user || !user.is_active) {
+      throw new AppError('User not found or inactive', 401);
+    }
+
+    const tenant = await this.tenantRepo.findById(user.tenant_id!);
+    if (!tenant || !tenant.is_active) {
+      throw new AppError('Tenant not found or inactive', 401);
+    }
+
+    const newToken = generateToken({
+      userId: user.id,
+      tenantId: tenant.id,
+      role: user.role,
+    });
+
+    const newRefreshToken = generateRefreshToken();
+    const refreshTokenDuration = parseDuration(env.REFRESH_TOKEN_EXPIRES_IN || '7d');
+    const refreshExpiresAt = new Date(Date.now() + refreshTokenDuration);
+
+    await this.refreshTokenRepo.create({
+      user_id: user.id,
+      tenant_id: tenant.id,
+      token: newRefreshToken,
+      expires_at: refreshExpiresAt,
+    });
+
+    const { password_hash: passwordHashColumn, ...userWithoutPassword } = user;
+    void passwordHashColumn;
+
+    return {
+      user: userWithoutPassword,
+      tenant,
+      token: newToken,
+      refreshToken: newRefreshToken,
+    };
+  }
+
+  async logout(userId: string) {
+    await this.refreshTokenRepo.revokeAllUserTokens(userId);
   }
 }

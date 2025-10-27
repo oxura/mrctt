@@ -106,7 +106,6 @@ export class LeadsRepository {
     const result = await pool.query(query, values);
     const lead = result.rows[0];
 
-    // Log activity
     if (userId) {
       await this.logActivity(
         tenantId,
@@ -159,16 +158,22 @@ export class LeadsRepository {
       page_size = 25,
     } = filters;
 
-    const sortColumnMap: Record<string, string> = {
-      created_at: 'l.created_at',
-      updated_at: 'l.updated_at',
-      status: 'l.status',
-      first_name: 'l.first_name',
-      last_name: 'l.last_name',
+    const resolveSortColumn = (column: string): string => {
+      switch (column) {
+        case 'updated_at':
+          return 'l.updated_at';
+        case 'status':
+          return 'l.status';
+        case 'first_name':
+          return 'l.first_name';
+        case 'last_name':
+          return 'l.last_name';
+        default:
+          return 'l.created_at';
+      }
     };
 
-    const resolvedSortColumn =
-      (sort_by && sortColumnMap[sort_by]) || sortColumnMap.created_at;
+    const resolvedSortColumn = resolveSortColumn(sort_by);
     const resolvedSortDirection = sort_direction === 'asc' ? 'ASC' : 'DESC';
     const pageSize = Math.min(page_size, 100);
 
@@ -178,37 +183,37 @@ export class LeadsRepository {
 
     if (status) {
       paramCount++;
-      conditions.push(`l.status = $${paramCount}`);
+      conditions.push('l.status = $' + paramCount);
       values.push(status);
     }
 
     if (assigned_to) {
       paramCount++;
-      conditions.push(`l.assigned_to = $${paramCount}`);
+      conditions.push('l.assigned_to = $' + paramCount);
       values.push(assigned_to);
     }
 
     if (product_id) {
       paramCount++;
-      conditions.push(`l.product_id = $${paramCount}`);
+      conditions.push('l.product_id = $' + paramCount);
       values.push(product_id);
     }
 
     if (search) {
       paramCount++;
-      conditions.push(`(
-        l.first_name ILIKE $${paramCount} OR
-        l.last_name ILIKE $${paramCount} OR
-        l.email ILIKE $${paramCount} OR
-        l.phone ILIKE $${paramCount} OR
-        p.name ILIKE $${paramCount}
-      )`);
+      const searchParam = '$' + paramCount;
+      conditions.push('(' +
+        'l.first_name ILIKE ' + searchParam + ' OR ' +
+        'l.last_name ILIKE ' + searchParam + ' OR ' +
+        'l.email ILIKE ' + searchParam + ' OR ' +
+        'l.phone ILIKE ' + searchParam + ' OR ' +
+        'p.name ILIKE ' + searchParam +
+      ')');
       values.push(`%${search}%`);
     }
 
     const whereClause = conditions.join(' AND ');
 
-    // Count total
     const countQuery = `
       SELECT COUNT(*)::int AS total
       FROM leads l
@@ -219,10 +224,10 @@ export class LeadsRepository {
     const total = countResult.rows[0].total;
 
     const offset = (page - 1) * pageSize;
-    paramCount++;
-    const limitValue = paramCount;
-    paramCount++;
-    const offsetValue = paramCount;
+
+    const dataValues = [...values];
+    const limitParamIndex = dataValues.push(pageSize);
+    const offsetParamIndex = dataValues.push(offset);
 
     const dataQuery = `
       SELECT
@@ -240,10 +245,10 @@ export class LeadsRepository {
       LEFT JOIN users u ON l.assigned_to = u.id
       WHERE ${whereClause}
       ORDER BY ${resolvedSortColumn} ${resolvedSortDirection}
-      LIMIT ${limitValue} OFFSET ${offsetValue}
+      LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
     `;
 
-    const dataResult = await pool.query(dataQuery, [...values, pageSize, offset]);
+    const dataResult = await pool.query(dataQuery, dataValues);
 
     return {
       leads: dataResult.rows,
@@ -362,7 +367,6 @@ export class LeadsRepository {
 
     await pool.query(query, [...values, leadId, tenantId]);
 
-    // Log activity
     if (userId) {
       const changes: string[] = [];
       if (data.status !== undefined && data.status !== oldLead.status) {
@@ -403,7 +407,6 @@ export class LeadsRepository {
 
     await pool.query(query, [status, leadId, tenantId]);
 
-    // Log activity
     if (userId) {
       await this.logActivity(
         tenantId,
@@ -418,7 +421,6 @@ export class LeadsRepository {
   }
 
   async delete(tenantId: string, leadId: string, userId?: string): Promise<void> {
-    // Log activity before deleting
     if (userId) {
       await this.logActivity(tenantId, leadId, userId, 'lead_deleted', 'Лид удален');
     }
