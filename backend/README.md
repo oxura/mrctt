@@ -167,7 +167,7 @@ GET /api/v1/health
 - **Password hashing**: bcrypt with 12 salt rounds
 - **JWT**: Signed with secret, configurable expiry
 - **Rate limiting**: 100 requests per minute
-- **Helmet.js**: Security headers
+- **Helmet.js**: Security headers with CSP (default self, inline styles allowed for UI, images via https/data, API connections restrained to configured frontend)
 - **Input validation**: Zod schemas
 - **SQL injection**: Parameterized queries
 - **CORS**: Configured for frontend origin

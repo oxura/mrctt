@@ -1,4 +1,5 @@
 import { pool } from '../db/client';
+import { AppError } from '../utils/appError';
 
 export interface Lead {
   id: string;
@@ -140,7 +141,7 @@ export class LeadsRepository {
     const result = await pool.query(query, [leadId, tenantId]);
 
     if (result.rows.length === 0) {
-      throw new Error('Lead not found');
+      throw new AppError('Lead not found', 404);
     }
 
     return result.rows[0];
@@ -157,6 +158,19 @@ export class LeadsRepository {
       page = 1,
       page_size = 25,
     } = filters;
+
+    const sortColumnMap: Record<string, string> = {
+      created_at: 'l.created_at',
+      updated_at: 'l.updated_at',
+      status: 'l.status',
+      first_name: 'l.first_name',
+      last_name: 'l.last_name',
+    };
+
+    const resolvedSortColumn =
+      (sort_by && sortColumnMap[sort_by]) || sortColumnMap.created_at;
+    const resolvedSortDirection = sort_direction === 'asc' ? 'ASC' : 'DESC';
+    const pageSize = Math.min(page_size, 100);
 
     const conditions: string[] = ['l.tenant_id = $1'];
     const values: any[] = [tenantId];
@@ -204,12 +218,7 @@ export class LeadsRepository {
     const countResult = await pool.query(countQuery, values);
     const total = countResult.rows[0].total;
 
-    // Get leads
-    const allowedSortColumns = ['created_at', 'updated_at', 'status', 'first_name', 'last_name'];
-    const sortColumn = allowedSortColumns.includes(sort_by) ? sort_by : 'created_at';
-    const sortDir = sort_direction === 'asc' ? 'ASC' : 'DESC';
-
-    const offset = (page - 1) * page_size;
+    const offset = (page - 1) * pageSize;
     paramCount++;
     const limitValue = paramCount;
     paramCount++;
@@ -230,18 +239,18 @@ export class LeadsRepository {
       LEFT JOIN groups g ON l.group_id = g.id
       LEFT JOIN users u ON l.assigned_to = u.id
       WHERE ${whereClause}
-      ORDER BY l.${sortColumn} ${sortDir}
-      LIMIT $${limitValue} OFFSET $${offsetValue}
+      ORDER BY ${resolvedSortColumn} ${resolvedSortDirection}
+      LIMIT ${limitValue} OFFSET ${offsetValue}
     `;
 
-    const dataResult = await pool.query(dataQuery, [...values, page_size, offset]);
+    const dataResult = await pool.query(dataQuery, [...values, pageSize, offset]);
 
     return {
       leads: dataResult.rows,
       total,
       page,
-      page_size,
-      total_pages: Math.ceil(total / page_size),
+      page_size: pageSize,
+      total_pages: Math.ceil(total / pageSize),
     };
   }
 
@@ -422,7 +431,7 @@ export class LeadsRepository {
     const result = await pool.query(query, [leadId, tenantId]);
 
     if (result.rowCount === 0) {
-      throw new Error('Lead not found');
+      throw new AppError('Lead not found', 404);
     }
   }
 

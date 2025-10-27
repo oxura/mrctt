@@ -28,7 +28,6 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     }
 
     req.user = result.rows[0];
-    req.tenantId = result.rows[0].tenant_id || undefined;
 
     const permissions = await permissionRepo.getPermissionsByUserId(req.user.id);
     req.permissions = permissions.map((permission) => permission.name);
