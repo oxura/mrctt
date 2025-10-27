@@ -75,10 +75,20 @@ const Leads: React.FC = () => {
 
   const managerOptions = useMemo(() => {
     if (!data?.leads) return [];
-    const managers = Array.from(
-      new Set(data.leads.map((lead) => lead.assigned_name).filter(Boolean))
-    );
-    return managers.sort();
+
+    const map = new Map<string, string>();
+
+    data.leads.forEach((lead) => {
+      if (lead.assigned_to && lead.assigned_name) {
+        if (!map.has(lead.assigned_to)) {
+          map.set(lead.assigned_to, lead.assigned_name);
+        }
+      }
+    });
+
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
   }, [data?.leads]);
 
   const leads = data?.leads || [];
@@ -366,8 +376,8 @@ const Leads: React.FC = () => {
                 >
                   <option value="all">Все</option>
                   {managerOptions.map((manager) => (
-                    <option key={manager} value={manager}>
-                      {manager}
+                    <option key={manager.id} value={manager.id}>
+                      {manager.name}
                     </option>
                   ))}
                 </select>
