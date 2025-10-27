@@ -9,6 +9,7 @@ interface LeadsChartDataPoint {
 interface LeadsChartProps {
   data: LeadsChartDataPoint[];
   loading?: boolean;
+  error?: string;
 }
 
 const CHART_PADDING = {
@@ -18,7 +19,7 @@ const CHART_PADDING = {
   left: 16,
 };
 
-const LeadsChart: React.FC<LeadsChartProps> = ({ data, loading }) => {
+const LeadsChart: React.FC<LeadsChartProps> = ({ data, loading, error }) => {
   const gradientId = useMemo(
     () => `lineGradient-${Math.random().toString(36).slice(2, 9)}`,
     []
@@ -31,6 +32,17 @@ const LeadsChart: React.FC<LeadsChartProps> = ({ data, loading }) => {
           <h3>Поступление лидов (30 дней)</h3>
         </div>
         <div className={styles.loadingState}>Загрузка данных...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h3>Поступление лидов (30 дней)</h3>
+        </div>
+        <div className={styles.errorState}>{error || 'Не удалось загрузить данные'}</div>
       </div>
     );
   }
@@ -48,7 +60,8 @@ const LeadsChart: React.FC<LeadsChartProps> = ({ data, loading }) => {
 
   const maxCount = Math.max(...data.map(d => d.count), 1);
   const chartHeight = 200;
-  const chartWidth = Math.max(data.length * 32, 320);
+  const minWidth = 800;
+  const chartWidth = Math.max(data.length * 30, minWidth);
   const segments = Math.max(data.length - 1, 1);
 
   const points = data.map((point, index) => {

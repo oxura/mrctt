@@ -13,11 +13,17 @@ interface TaskListProps {
   tasks: TaskItem[];
   onToggleTask?: (taskId: string, completed: boolean) => void;
   loading?: boolean;
+  error?: string;
 }
 
-const TaskList: React.FC<TaskListProps> = ({ tasks, onToggleTask, loading }) => {
+const TaskList: React.FC<TaskListProps> = ({ tasks, onToggleTask, loading, error }) => {
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
+
+    if (Number.isNaN(date.getTime())) {
+      return '—';
+    }
+
     return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   };
 
@@ -39,9 +45,13 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onToggleTask, loading }) => 
   return (
     <div className={styles.container}>
       <h3>Мои задачи на сегодня</h3>
-      {tasks.length === 0 ? (
+      {error && (
+        <div className={styles.errorState}>{error || 'Не удалось загрузить данные'}</div>
+      )}
+      {tasks.length === 0 && !error ? (
         <div className={styles.emptyState}>Нет задач на сегодня</div>
-      ) : (
+      ) : null}
+      {tasks.length > 0 && (
         <ul className={styles.list}>
           {tasks.map((task) => (
             <li key={task.id} className={styles.item}>

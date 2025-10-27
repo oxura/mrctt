@@ -55,11 +55,20 @@
 }
 
 .loadingState,
-.emptyState {
+.emptyState,
+.errorState {
   padding: 20px;
   text-align: center;
-  color: #6b7280;
   font-size: 14px;
+}
+
+.loadingState,
+.emptyState {
+  color: #6b7280;
+}
+
+.errorState {
+  color: #dc2626;
 }
 
 .meta {
