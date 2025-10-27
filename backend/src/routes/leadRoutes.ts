@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import leadsController from '../controllers/leadsController';
+import commentsController from '../controllers/commentsController';
+import activitiesController from '../controllers/activitiesController';
+import tasksController from '../controllers/tasksController';
 import { authenticate } from '../middleware/auth';
 import { tenantGuard } from '../middleware/tenant';
 import {
@@ -10,6 +13,7 @@ import {
 import { auditLog } from '../middleware/audit';
 import { leadsRateLimiter } from '../middleware/rateLimiter';
 import leadsRepository from '../repositories/leadsRepository';
+import tasksRepository from '../repositories/tasksRepository';
 
 const router = Router();
 
@@ -82,6 +86,102 @@ router.delete(
   ),
   auditLog('lead.delete', 'lead'),
   leadsController.delete
+);
+
+router.get(
+  '/:leadId/comments',
+  requirePermissionWithOwnership(
+    'leads:read:all',
+    'leads:read:own',
+    async (req) => {
+      const lead = await leadsRepository.findById(req.tenantId!, req.params.leadId);
+      return lead.assigned_to;
+    }
+  ),
+  commentsController.list
+);
+
+router.post(
+  '/:leadId/comments',
+  requirePermissionWithOwnership(
+    'leads:update:all',
+    'leads:update:own',
+    async (req) => {
+      const lead = await leadsRepository.findById(req.tenantId!, req.params.leadId);
+      return lead.assigned_to;
+    }
+  ),
+  auditLog('comment.create', 'lead'),
+  commentsController.create
+);
+
+router.get(
+  '/:leadId/activities',
+  requirePermissionWithOwnership(
+    'leads:read:all',
+    'leads:read:own',
+    async (req) => {
+      const lead = await leadsRepository.findById(req.tenantId!, req.params.leadId);
+      return lead.assigned_to;
+    }
+  ),
+  activitiesController.list
+);
+
+router.get(
+  '/:leadId/tasks',
+  requirePermissionWithOwnership(
+    'leads:read:all',
+    'leads:read:own',
+    async (req) => {
+      const lead = await leadsRepository.findById(req.tenantId!, req.params.leadId);
+      return lead.assigned_to;
+    }
+  ),
+  tasksController.list
+);
+
+router.post(
+  '/:leadId/tasks',
+  requirePermission('tasks:create'),
+  requirePermissionWithOwnership(
+    'leads:update:all',
+    'leads:update:own',
+    async (req) => {
+      const lead = await leadsRepository.findById(req.tenantId!, req.params.leadId);
+      return lead.assigned_to;
+    }
+  ),
+  auditLog('task.create', 'lead'),
+  tasksController.create
+);
+
+router.patch(
+  '/:leadId/tasks/:taskId',
+  requirePermissionWithOwnership(
+    'tasks:update:all',
+    'tasks:update:own',
+    async (req) => {
+      const task = await tasksRepository.findById(req.tenantId!, req.params.taskId);
+      return task.assigned_to;
+    }
+  ),
+  auditLog('task.update', 'task'),
+  tasksController.update
+);
+
+router.delete(
+  '/:leadId/tasks/:taskId',
+  requirePermissionWithOwnership(
+    'tasks:delete:all',
+    'tasks:delete:own',
+    async (req) => {
+      const task = await tasksRepository.findById(req.tenantId!, req.params.taskId);
+      return task.assigned_to;
+    }
+  ),
+  auditLog('task.delete', 'task'),
+  tasksController.delete
 );
 
 export default router;

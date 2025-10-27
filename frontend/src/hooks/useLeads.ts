@@ -165,10 +165,40 @@ export const useLead = (leadId: string) => {
     fetchLead();
   }, [fetchLead]);
 
+  const updateLead = async (leadData: Partial<CreateLeadDto>): Promise<Lead> => {
+    if (!leadId) {
+      throw new Error('Lead ID is required');
+    }
+
+    try {
+      const response = await api.patch(`/api/v1/leads/${leadId}`, leadData);
+      await fetchLead();
+      return response.data.data;
+    } catch (err: any) {
+      throw new Error(err.response?.data?.message || 'Failed to update lead');
+    }
+  };
+
+  const updateLeadStatus = async (status: string): Promise<Lead> => {
+    if (!leadId) {
+      throw new Error('Lead ID is required');
+    }
+
+    try {
+      const response = await api.patch(`/api/v1/leads/${leadId}/status`, { status });
+      await fetchLead();
+      return response.data.data;
+    } catch (err: any) {
+      throw new Error(err.response?.data?.message || 'Failed to update lead status');
+    }
+  };
+
   return {
     lead,
     loading,
     error,
     refetch: fetchLead,
+    updateLead,
+    updateLeadStatus,
   };
 };

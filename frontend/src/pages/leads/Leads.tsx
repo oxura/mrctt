@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppLayout from '../../layouts/AppLayout';
 import AddLeadModal from '../../components/modals/AddLeadModal';
 import ConfirmModal from '../../components/ui/ConfirmModal';
@@ -32,6 +33,7 @@ const dateFormatter = (value: string, withTime = true) => {
 };
 
 const Leads: React.FC = () => {
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | string>('all');
@@ -369,6 +371,7 @@ const Leads: React.FC = () => {
               type="button"
               className={styles.rowAction}
               aria-label={`Открыть лид ${getLeadDisplayName(lead)}`}
+              onClick={() => navigate(`/leads/${lead.id}`)}
             >
               Открыть
             </button>
@@ -447,7 +450,11 @@ const Leads: React.FC = () => {
 
                       <footer className={styles.boardCardFooter}>
                         <button type="button">Связаться</button>
-                        <button type="button" className={styles.boardPrimaryAction}>
+                        <button
+                          type="button"
+                          className={styles.boardPrimaryAction}
+                          onClick={() => navigate(`/leads/${lead.id}`)}
+                        >
                           Открыть карточку
                         </button>
                       </footer>

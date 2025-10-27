@@ -9,6 +9,7 @@ import OnboardingWizard from './pages/onboarding/OnboardingWizard';
 import Landing from './pages/landing/Landing';
 import ProtectedRoute from './routes/ProtectedRoute';
 import Leads from './pages/leads/Leads';
+import LeadDetail from './pages/leads/LeadDetail';
 import Products from './pages/products/Products';
 import Groups from './pages/groups/Groups';
 import Forms from './pages/forms/Forms';
@@ -34,6 +35,7 @@ const App: React.FC = () => {
       <Route element={<ProtectedRoute />}> 
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/leads" element={<Leads />} />
+        <Route path="/leads/:id" element={<LeadDetail />} />
         <Route path="/products" element={<Products />} />
         <Route path="/groups" element={<Groups />} />
         <Route path="/forms" element={<Forms />} />
