@@ -352,6 +352,26 @@
   font-size: 15px;
 }
 
+.loading {
+  text-align: center;
+  padding: 40px 24px;
+  color: #64748b;
+  font-size: 15px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.error {
+  text-align: center;
+  padding: 20px 24px;
+  color: #dc2626;
+  font-size: 15px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 16px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
 .pagination {
   display: flex;
   justify-content: space-between;
