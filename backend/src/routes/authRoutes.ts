@@ -1,14 +1,25 @@
 import { Router } from 'express';
-import { register, login, getCurrentUser } from '../controllers/authController';
+import { register, login, getCurrentUser, refresh, logout } from '../controllers/authController';
 import { requestPasswordReset, resetPassword } from '../controllers/passwordResetController';
 import { authenticate } from '../middleware/auth';
+import {
+  authLoginLimiter,
+  authPasswordResetLimiter,
+  authRegisterLimiter,
+} from '../middleware/rateLimiter';
+import { csrfProtection } from '../middleware/csrf';
 
 const router = Router();
 
-router.post('/register', register);
-router.post('/login', login);
-router.post('/password/forgot', requestPasswordReset);
-router.post('/password/reset', resetPassword);
+router.post('/register', authRegisterLimiter, register);
+router.post('/login', authLoginLimiter, login);
+router.post('/password/forgot', authPasswordResetLimiter, requestPasswordReset);
+router.post('/password/reset', authPasswordResetLimiter, resetPassword);
+
+router.use(csrfProtection);
+
+router.post('/refresh', authenticate, refresh);
+router.post('/logout', authenticate, logout);
 router.get('/me', authenticate, getCurrentUser);
 
 export default router;

@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+const MAX_CUSTOM_FIELDS_SIZE = 10 * 1024;
+
+const customFieldsSchema = z.record(z.any()).optional().refine((data) => {
+  if (!data) return true;
+  const jsonSize = JSON.stringify(data).length;
+  return jsonSize <= MAX_CUSTOM_FIELDS_SIZE;
+}, {
+  message: `custom_fields must not exceed ${MAX_CUSTOM_FIELDS_SIZE} bytes when serialized`,
+});
+
 export const leadStatusEnum = z.enum(['new', 'working', 'awaiting_payment', 'won', 'lost']);
 
 export const leadsListQuerySchema = z.object({
@@ -26,7 +36,7 @@ export const createLeadSchema = z.object({
   utm_source: z.string().max(255, 'UTM source must be 255 characters or less').nullable().optional(),
   utm_medium: z.string().max(255, 'UTM medium must be 255 characters or less').nullable().optional(),
   utm_campaign: z.string().max(255, 'UTM campaign must be 255 characters or less').nullable().optional(),
-  custom_fields: z.record(z.any()).optional(),
+  custom_fields: customFieldsSchema,
 });
 
 export const updateLeadSchema = z.object({
@@ -42,7 +52,7 @@ export const updateLeadSchema = z.object({
   utm_source: z.string().max(255, 'UTM source must be 255 characters or less').nullable().optional(),
   utm_medium: z.string().max(255, 'UTM medium must be 255 characters or less').nullable().optional(),
   utm_campaign: z.string().max(255, 'UTM campaign must be 255 characters or less').nullable().optional(),
-  custom_fields: z.record(z.any()).optional(),
+  custom_fields: customFieldsSchema,
 });
 
 export const updateLeadStatusSchema = z.object({

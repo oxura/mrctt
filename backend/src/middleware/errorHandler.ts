@@ -11,18 +11,20 @@ export const errorHandler = (
 ) => {
   if (isAppError(error)) {
     logger.error('Operational error:', {
+      requestId: req.requestId,
       message: error.message,
       statusCode: error.statusCode,
       details: error.details,
       path: req.path,
       method: req.method,
-      tenantId: (req as any).tenantId,
-      userId: (req as any).userId,
+      tenantId: req.tenantId,
+      userId: req.user?.id,
     });
 
     const response: any = {
       status: 'error',
       message: error.message,
+      requestId: req.requestId,
     };
 
     if (error.details) {
@@ -33,6 +35,7 @@ export const errorHandler = (
   }
 
   logger.error('Unexpected error:', {
+    requestId: req.requestId,
     message: error.message,
     stack: error.stack,
     path: req.path,

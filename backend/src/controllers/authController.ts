@@ -5,13 +5,22 @@ import { AuditService } from '../services/auditService';
 import { AppError } from '../utils/appError';
 import { asyncHandler } from '../middleware/errorHandler';
 import logger from '../utils/logger';
+import { generateCSRFToken } from '../utils/tokens';
 
 const authService = new AuthService();
 const auditService = new AuditService();
 
+const passwordSchema = z
+  .string()
+  .min(10, 'Password must be at least 10 characters long')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/[0-9]/, 'Password must contain at least one number')
+  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
+
 const registerSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: passwordSchema,
   firstName: z.string().min(1),
 });
 
@@ -61,7 +70,43 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('Validation failed', 400, parsed.error.flatten().fieldErrors);
   }
 
-  const result = await authService.login(parsed.data);
+  const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
+  const result = await authService.login(parsed.data, ipAddress);
+
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'strict' as const,
+    path: '/',
+  };
+
+  res.cookie('access_token', result.token, {
+    ...cookieOptions,
+    maxAge: 15 * 60 * 1000,
+  });
+
+  res.cookie('refresh_token', result.refreshToken, {
+    ...cookieOptions,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  res.cookie('tenant_id', result.tenant.id, {
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: 'strict' as const,
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  const csrfToken = generateCSRFToken();
+  res.cookie('csrf_token', csrfToken, {
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: 'strict' as const,
+    path: '/',
+    maxAge: 24 * 60 * 60 * 1000,
+  });
 
   auditService
     .record({
@@ -80,9 +125,11 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
       logger.warn('Failed to audit login', { error });
     });
 
+  const { token: _, refreshToken: __, ...dataWithoutTokens } = result;
+
   res.status(200).json({
     status: 'success',
-    data: result,
+    data: { ...dataWithoutTokens, csrfToken },
   });
 });
 
@@ -96,5 +143,59 @@ export const getCurrentUser = asyncHandler(async (req: Request, res: Response) =
   res.status(200).json({
     status: 'success',
     data: { user },
+  });
+});
+
+export const refresh = asyncHandler(async (req: Request, res: Response) => {
+  const refreshToken = req.cookies?.refresh_token;
+
+  if (!refreshToken) {
+    throw new AppError('Refresh token not found', 401);
+  }
+
+  if (!req.user) {
+    throw new AppError('User not authenticated', 401);
+  }
+
+  const result = await authService.refreshAccessToken(refreshToken, req.user.id);
+
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'strict' as const,
+    path: '/',
+  };
+
+  res.cookie('access_token', result.token, {
+    ...cookieOptions,
+    maxAge: 15 * 60 * 1000,
+  });
+
+  res.cookie('refresh_token', result.refreshToken, {
+    ...cookieOptions,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  const { token: _, refreshToken: __, ...dataWithoutTokens } = result;
+
+  res.status(200).json({
+    status: 'success',
+    data: dataWithoutTokens,
+  });
+});
+
+export const logout = asyncHandler(async (req: Request, res: Response) => {
+  if (req.user) {
+    await authService.logout(req.user.id);
+  }
+
+  res.clearCookie('access_token');
+  res.clearCookie('refresh_token');
+  res.clearCookie('tenant_id');
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Logged out successfully',
   });
 });

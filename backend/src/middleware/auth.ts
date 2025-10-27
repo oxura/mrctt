@@ -9,13 +9,19 @@ const permissionRepo = new PermissionRepository();
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers.authorization;
+    let token: string | undefined;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else if (req.cookies?.access_token) {
+      token = req.cookies.access_token;
+    }
+
+    if (!token) {
       throw new AppError('No token provided', 401);
     }
 
-    const token = authHeader.substring(7);
     const decoded = verifyToken(token);
 
     const result = await pool.query<User>(

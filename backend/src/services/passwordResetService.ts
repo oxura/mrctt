@@ -26,14 +26,20 @@ export class PasswordResetService {
     const tenant = await this.tenantRepo.findBySlug(tenantSlug);
 
     if (!tenant || !tenant.is_active) {
-      logger.warn(`Password reset attempt for non-existent tenant: ${tenantSlug}`);
+      logger.debug(`Password reset attempt for unknown tenant`, {
+        tenantSlug,
+        email,
+      });
       return { success: true };
     }
 
     const user = await this.userRepo.findByEmail(email, tenant.id);
 
     if (!user || !user.is_active) {
-      logger.warn(`Password reset attempt for non-existent user: ${email} in tenant: ${tenantSlug}`);
+      logger.debug(`Password reset attempt for unknown user`, {
+        tenantSlug,
+        email,
+      });
       return { success: true };
     }
 
