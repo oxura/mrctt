@@ -31,9 +31,23 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const requestId = response.headers['x-request-id'];
+    if (requestId && import.meta.env.DEV) {
+      console.debug('[API] Request ID:', requestId);
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
+    const requestId = error.response?.headers?.['x-request-id'];
+    
+    if (requestId) {
+      error.requestId = requestId;
+      if (import.meta.env.DEV) {
+        console.error('[API] Error with Request ID:', requestId);
+      }
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;

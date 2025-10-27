@@ -11,12 +11,16 @@ const CSRF_EXEMPT_PATHS = new Set([
   '/api/v1/health',
 ]);
 
+const CSRF_EXEMPT_PATTERNS = [
+  /^\/api\/v1\/public\/forms\/.+$/,
+];
+
 export const csrfProtection = (req: Request, res: Response, next: NextFunction) => {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
     return next();
   }
 
-  if (CSRF_EXEMPT_PATHS.has(req.path)) {
+  if (CSRF_EXEMPT_PATHS.has(req.path) || CSRF_EXEMPT_PATTERNS.some((pattern) => pattern.test(req.path))) {
     return next();
   }
 

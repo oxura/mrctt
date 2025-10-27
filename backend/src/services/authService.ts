@@ -228,7 +228,29 @@ export class AuthService {
     const storedToken = await this.refreshTokenRepo.findValidByToken(refreshToken, userId);
 
     if (!storedToken) {
+      const user = await this.userRepo.findById(userId);
+      if (user && user.tenant_id) {
+        await this.refreshTokenRepo.revokeTokenFamily(userId, user.tenant_id);
+        logger.warn('Refresh token reuse detected - revoking token family', {
+          userId,
+          tenantId: user.tenant_id,
+        });
+      }
       throw new AppError('Invalid or expired refresh token', 401);
+    }
+
+    if (storedToken.is_revoked) {
+      await this.refreshTokenRepo.revokeTokenFamily(userId, storedToken.tenant_id);
+      logger.warn('Revoked refresh token reuse detected - revoking token family', {
+        userId,
+        tenantId: storedToken.tenant_id,
+        tokenId: storedToken.id,
+      });
+      throw new AppError('Token has been revoked for security reasons', 401);
+    }
+
+    if (storedToken.expires_at <= new Date()) {
+      throw new AppError('Refresh token has expired', 401);
     }
 
     await this.refreshTokenRepo.revokeToken(storedToken.id);

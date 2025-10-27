@@ -41,6 +41,20 @@ export const authRegisterLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const createTenantUserLimiter = (prefix: string, limit: number, windowMs = 60 * 1000) =>
+  rateLimit({
+    windowMs,
+    limit,
+    keyGenerator: (req) => {
+      const tenantId = req.tenantId || 'unknown';
+      const userId = req.user?.id || req.ip || 'anonymous';
+      return `${prefix}:${tenantId}:${userId}`;
+    },
+    message: 'Too many requests from this tenant/user, please try again later.',
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
 export const leadsRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 100,
@@ -54,6 +68,12 @@ export const leadsRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+export const leadMutationLimiter = createTenantUserLimiter('lead-mutation', 30);
+export const leadCommentLimiter = createTenantUserLimiter('lead-comment', 30);
+export const leadTaskLimiter = createTenantUserLimiter('lead-task', 30);
+export const leadDeleteLimiter = createTenantUserLimiter('lead-delete', 20);
+export const authRefreshLimiter = createTenantUserLimiter('auth-refresh', 20);
 
 export const apiRateLimiter = rateLimit({
   windowMs: 60 * 1000,
