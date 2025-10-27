@@ -436,6 +436,11 @@
   gap: 16px;
 }
 
+.boardColumnDisabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
 .boardColumnHeader {
   display: flex;
   justify-content: space-between;
