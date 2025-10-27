@@ -3,6 +3,7 @@ import AppLayout from '../../layouts/AppLayout';
 import AddLeadModal from '../../components/modals/AddLeadModal';
 import { useLeads, Lead, CreateLeadDto } from '../../hooks/useLeads';
 import { leadStatusMeta } from '../../data/leads';
+import { useToast } from '../../components/ui/toastContext';
 import styles from './Leads.module.css';
 
 const pageSizeOptions = [25, 50, 100];
@@ -50,6 +51,10 @@ const Leads: React.FC = () => {
     page: currentPage,
     page_size: pageSize,
   });
+  const { success: showToastSuccess, error: showToastError } = useToast();
+  const [optimisticLeads, setOptimisticLeads] = useState<Lead[]>([]);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
+
 
   useEffect(() => {
     setCurrentPage(1);
@@ -73,12 +78,20 @@ const Leads: React.FC = () => {
     });
   }, [searchTerm, statusFilter, managerFilter, sortColumn, sortDirection, currentPage, pageSize, setFilters]);
 
+  useEffect(() => {
+    if (data?.leads) {
+      setOptimisticLeads(data.leads);
+    } else if (!loading) {
+      setOptimisticLeads([]);
+    }
+  }, [data?.leads, loading]);
+
   const managerOptions = useMemo(() => {
-    if (!data?.leads) return [];
+    if (!optimisticLeads.length) return [];
 
     const map = new Map<string, string>();
 
-    data.leads.forEach((lead) => {
+    optimisticLeads.forEach((lead) => {
       if (lead.assigned_to && lead.assigned_name) {
         if (!map.has(lead.assigned_to)) {
           map.set(lead.assigned_to, lead.assigned_name);
@@ -89,9 +102,9 @@ const Leads: React.FC = () => {
     return Array.from(map.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-  }, [data?.leads]);
+  }, [optimisticLeads]);
 
-  const leads = data?.leads || [];
+  const leads = optimisticLeads;
   const total = data?.total || 0;
   const totalPages = data?.total_pages || 1;
 
@@ -138,11 +151,20 @@ const Leads: React.FC = () => {
   };
 
   const handleDragStart = (e: React.DragEvent, leadId: string) => {
+    if (isStatusUpdating) {
+      e.preventDefault();
+      return;
+    }
+
     setDraggedLeadId(leadId);
     e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleDragOver = (e: React.DragEvent) => {
+    if (isStatusUpdating) {
+      return;
+    }
+
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   };
@@ -150,14 +172,41 @@ const Leads: React.FC = () => {
   const handleDrop = async (e: React.DragEvent, newStatus: string) => {
     e.preventDefault();
 
-    if (!draggedLeadId) return;
+    if (!draggedLeadId || isStatusUpdating) {
+      return;
+    }
+
+    const currentLead = leads.find((lead) => lead.id === draggedLeadId);
+
+    if (!currentLead) {
+      setDraggedLeadId(null);
+      return;
+    }
+
+    if (currentLead.status === newStatus) {
+      setDraggedLeadId(null);
+      return;
+    }
+
+    const previousState = leads.map((lead) => ({ ...lead }));
+    const statusMeta = leadStatusMeta[newStatus as keyof typeof leadStatusMeta];
+
+    setIsStatusUpdating(true);
+    setOptimisticLeads((prev) =>
+      prev.map((lead) => (lead.id === draggedLeadId ? { ...lead, status: newStatus } : lead))
+    );
 
     try {
       await updateLeadStatus(draggedLeadId, newStatus);
+      const statusLabel = statusMeta?.label || newStatus;
+      showToastSuccess(`Лид «${getLeadDisplayName(currentLead)}» перемещен в «${statusLabel}».`);
     } catch (err) {
       console.error('Failed to update status:', err);
+      setOptimisticLeads(previousState);
+      showToastError('Не удалось обновить статус лида. Попробуйте снова.');
     } finally {
       setDraggedLeadId(null);
+      setIsStatusUpdating(false);
     }
   };
 
@@ -254,9 +303,14 @@ const Leads: React.FC = () => {
           return (
             <section
               key={column.status}
-              className={styles.boardColumn}
-              onDragOver={handleDragOver}
+              className={`${styles.boardColumn} ${isStatusUpdating ? styles.boardColumnDisabled : ''}`.trim()}
+              onDragOver={(e) => {
+                if (!isStatusUpdating) {
+                  handleDragOver(e);
+                }
+              }}
               onDrop={(e) => handleDrop(e, column.status)}
+              aria-disabled={isStatusUpdating}
             >
               <header
                 className={styles.boardColumnHeader}
@@ -277,7 +331,7 @@ const Leads: React.FC = () => {
                     <article
                       key={lead.id}
                       className={styles.boardCard}
-                      draggable
+                      draggable={!isStatusUpdating}
                       onDragStart={(e) => handleDragStart(e, lead.id)}
                     >
                       <header className={styles.boardCardHeader}>
