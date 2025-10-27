@@ -12,9 +12,10 @@ interface ActivityItem {
 interface ActivityFeedProps {
   items: ActivityItem[];
   loading?: boolean;
+  error?: string;
 }
 
-const ActivityFeed: React.FC<ActivityFeedProps> = ({ items, loading }) => {
+const ActivityFeed: React.FC<ActivityFeedProps> = ({ items, loading, error }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('ru-RU', {
@@ -49,6 +50,15 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ items, loading }) => {
     );
   }
 
+  if (error) {
+    return (
+      <div className={styles.container}>
+        <h3>Лента событий</h3>
+        <div className={styles.errorState}>{error || 'Не удалось загрузить данные'}</div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.container}>
       <h3>Лента событий</h3>
@@ -58,12 +68,14 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ items, loading }) => {
         <div className={styles.list}>
           {items.map((item) => (
             <div key={item.id} className={styles.item}>
-              <div className={styles.avatar}>{item.actor_name?.[0] || 'С'}</div>
+              <div className={styles.avatar}>
+                {item.actor_name?.[0]?.toUpperCase() || 'С'}
+              </div>
               <div className={styles.content}>
                 <div className={styles.title}>{formatTitle(item.type)}</div>
                 {item.description && <div className={styles.description}>{item.description}</div>}
                 <div className={styles.meta}>
-                  <span>{item.actor_name}</span>
+                  <span>{item.actor_name || 'Система'}</span>
                   <span>•</span>
                   <time>{formatDate(item.created_at)}</time>
                 </div>

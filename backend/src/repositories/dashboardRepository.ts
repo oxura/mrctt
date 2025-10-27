@@ -59,11 +59,12 @@ export class DashboardRepository {
     const today = row.today || 0;
     const yesterday = row.yesterday || 0;
 
-    const percentChange = yesterday === 0
-      ? today > 0
-        ? 100
-        : 0
-      : ((today - yesterday) / yesterday) * 100;
+    let percentChange = 0;
+    if (yesterday === 0) {
+      percentChange = today > 0 ? 100 : 0;
+    } else {
+      percentChange = ((today - yesterday) / yesterday) * 100;
+    }
 
     return {
       today,

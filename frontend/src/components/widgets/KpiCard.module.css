@@ -28,15 +28,15 @@
   font-weight: 500;
 }
 
-.trend.up {
+.up {
   color: #10b981;
 }
 
-.trend.down {
+.down {
   color: #ef4444;
 }
 
-.trend.neutral {
+.neutral {
   color: #6b7280;
 }
 

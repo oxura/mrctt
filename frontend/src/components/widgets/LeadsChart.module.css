@@ -64,11 +64,16 @@
 }
 
 .loadingState,
-.emptyState {
+.emptyState,
+.errorState {
   height: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #64748b;
   font-size: 14px;
+}
+
+.errorState {
+  color: #dc2626;
 }
