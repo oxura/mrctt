@@ -135,7 +135,9 @@ export class LeadsController {
 
       res.status(200).json({
         status: 'success',
-        message: 'Lead deleted successfully',
+        data: {
+          message: 'Lead deleted successfully',
+        },
       });
     } catch (error) {
       next(error);

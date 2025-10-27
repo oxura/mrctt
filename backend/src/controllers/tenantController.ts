@@ -8,7 +8,12 @@ const tenantService = new TenantService();
 
 const updateOnboardingSchema = z.object({
   name: z.string().min(1).optional(),
-  slug: z.string().min(3).max(100).regex(/^[a-z0-9-]+$/).optional(),
+  slug: z
+    .string()
+    .min(3, 'Slug must be at least 3 characters')
+    .max(60, 'Slug must not exceed 60 characters')
+    .regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens')
+    .optional(),
   logo_url: z.string().nullable().optional(),
   country: z.string().optional(),
   city: z.string().optional(),

@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import AppLayout from '../../layouts/AppLayout';
 import AddLeadModal from '../../components/modals/AddLeadModal';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import { useLeads, Lead, CreateLeadDto } from '../../hooks/useLeads';
+import { useUsers } from '../../hooks/useUsers';
 import { leadStatusMeta } from '../../data/leads';
 import { useToast } from '../../components/ui/toastContext';
 import styles from './Leads.module.css';
@@ -41,6 +43,8 @@ const Leads: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data, loading, error, setFilters, createLead, updateLeadStatus, deleteLead } = useLeads({
     search: searchTerm || undefined,
@@ -51,14 +55,15 @@ const Leads: React.FC = () => {
     page: currentPage,
     page_size: pageSize,
   });
+  const { users } = useUsers();
   const { success: showToastSuccess, error: showToastError } = useToast();
   const [optimisticLeads, setOptimisticLeads] = useState<Lead[]>([]);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
-
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, managerFilter, pageSize]);
+    setSelectedRows([]);
+  }, [searchTerm, statusFilter, managerFilter, pageSize, sortColumn, sortDirection]);
 
   useEffect(() => {
     if (viewMode === 'board' && selectedRows.length > 0) {
@@ -81,32 +86,86 @@ const Leads: React.FC = () => {
   useEffect(() => {
     if (data?.leads) {
       setOptimisticLeads(data.leads);
+      const validIds = new Set(data.leads.map((lead) => lead.id));
+      setSelectedRows((prev) => prev.filter((id) => validIds.has(id)));
     } else if (!loading) {
       setOptimisticLeads([]);
+      setSelectedRows([]);
     }
   }, [data?.leads, loading]);
 
+  const getUserDisplayName = (userId: string | null, fallback?: string | null) => {
+    if (!userId) return fallback ?? '';
+    const user = users.find((item) => item.id === userId);
+    if (!user) return fallback ?? '';
+    const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
+    return fullName || user.email;
+  };
+
+  const pluralizeLead = (count: number) => {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+
+    if (mod10 === 1 && mod100 !== 11) {
+      return `${count} лид`;
+    }
+
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+      return `${count} лида`;
+    }
+
+    return `${count} лидов`;
+  };
+
   const managerOptions = useMemo(() => {
-    if (!optimisticLeads.length) return [];
-
-    const map = new Map<string, string>();
-
-    optimisticLeads.forEach((lead) => {
-      if (lead.assigned_to && lead.assigned_name) {
-        if (!map.has(lead.assigned_to)) {
-          map.set(lead.assigned_to, lead.assigned_name);
-        }
-      }
-    });
-
-    return Array.from(map.entries())
-      .map(([id, name]) => ({ id, name }))
+    return users
+      .map((user) => ({
+        id: user.id,
+        name: [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || user.email,
+      }))
       .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-  }, [optimisticLeads]);
+  }, [users]);
 
   const leads = optimisticLeads;
   const total = data?.total || 0;
   const totalPages = data?.total_pages || 1;
+
+  const getLeadDisplayName = (lead: Lead) => {
+    const parts = [lead.first_name, lead.last_name].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : 'Без имени';
+  };
+
+  const selectedLeads = useMemo(
+    () => leads.filter((lead) => selectedRows.includes(lead.id)),
+    [leads, selectedRows]
+  );
+
+  const selectedLeadCount = selectedLeads.length;
+
+  const sampleLeadNames = useMemo(() => {
+    return selectedLeads.slice(0, 3).map((lead) => getLeadDisplayName(lead));
+  }, [selectedLeads]);
+
+  const deleteModalMessage = useMemo(() => {
+    if (selectedLeadCount === 0) {
+      return 'Нет лидов для удаления.';
+    }
+
+    const countLabel = pluralizeLead(selectedLeadCount);
+    const base = selectedLeadCount === 1 ? 'Будет удален' : 'Будут удалены';
+    const examples = sampleLeadNames.join(', ');
+    const remaining = Math.max(selectedLeadCount - sampleLeadNames.length, 0);
+
+    if (!examples) {
+      return `${base} ${countLabel}.`;
+    }
+
+    if (remaining > 0) {
+      return `${base} ${countLabel}. Например: ${examples} и еще ${pluralizeLead(remaining)}.`;
+    }
+
+    return `${base} ${countLabel}: ${examples}.`;
+  }, [selectedLeadCount, sampleLeadNames]);
 
   const isAllSelected = leads.length > 0 && leads.every((lead) => selectedRows.includes(lead.id));
 
@@ -134,15 +193,44 @@ const Leads: React.FC = () => {
   };
 
   const handleBulkDelete = async () => {
-    if (!window.confirm(`Удалить выбранные лиды (${selectedRows.length})?`)) {
-      return;
-    }
-
+    setIsDeleting(true);
     try {
-      await Promise.all(selectedRows.map((id) => deleteLead(id)));
-      setSelectedRows([]);
-    } catch (err) {
-      console.error('Failed to delete leads:', err);
+      const currentLeadsIds = new Set(optimisticLeads.map((lead) => lead.id));
+      const validSelectedIds = selectedRows.filter((id) => currentLeadsIds.has(id));
+
+      if (validSelectedIds.length === 0) {
+        showToastError('Выбранные лиды недоступны для удаления');
+        setSelectedRows([]);
+        setIsDeleteModalOpen(false);
+        return;
+      }
+
+      const results = await Promise.allSettled(validSelectedIds.map((id) => deleteLead(id)));
+
+      const failedIds: string[] = [];
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          failedIds.push(validSelectedIds[index]);
+        }
+      });
+
+      const successCount = validSelectedIds.length - failedIds.length;
+
+      if (successCount > 0) {
+        showToastSuccess(`Удалено лидов: ${successCount}`);
+      }
+
+      if (failedIds.length > 0) {
+        showToastError(`Не удалось удалить ${failedIds.length} лидов`);
+        setSelectedRows((prev) => prev.filter((id) => failedIds.includes(id)));
+      } else {
+        setSelectedRows([]);
+        setIsDeleteModalOpen(false);
+      }
+    } catch (err: any) {
+      showToastError(err?.message || 'Не удалось удалить лиды');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -210,11 +298,6 @@ const Leads: React.FC = () => {
     }
   };
 
-  const getLeadDisplayName = (lead: Lead) => {
-    const parts = [lead.first_name, lead.last_name].filter(Boolean);
-    return parts.length > 0 ? parts.join(' ') : 'Без имени';
-  };
-
   const renderTableRows = (leadsToRender: Lead[]) => {
     return leadsToRender.map((lead) => {
       const statusMeta = leadStatusMeta[lead.status as keyof typeof leadStatusMeta] || {
@@ -222,6 +305,7 @@ const Leads: React.FC = () => {
         description: '',
         accent: '#6b7280',
       };
+      const assignedName = getUserDisplayName(lead.assigned_to, lead.assigned_name);
 
       return (
         <tr key={lead.id} className={styles.tableRow}>
@@ -231,6 +315,7 @@ const Leads: React.FC = () => {
                 type="checkbox"
                 checked={selectedRows.includes(lead.id)}
                 onChange={() => toggleRow(lead.id)}
+                aria-label={`Выбрать лид ${getLeadDisplayName(lead)}`}
               />
               <span className={styles.customCheckbox} aria-hidden="true" />
             </label>
@@ -258,7 +343,7 @@ const Leads: React.FC = () => {
             {lead.group_name && <div className={styles.tableSub}>{lead.group_name}</div>}
           </td>
           <td>
-            <div className={styles.managerBadge}>{lead.assigned_name || '—'}</div>
+            <div className={styles.managerBadge}>{assignedName || '—'}</div>
           </td>
           <td>
             <div>{dateFormatter(lead.created_at)}</div>
@@ -280,7 +365,11 @@ const Leads: React.FC = () => {
             )}
           </td>
           <td>
-            <button type="button" className={styles.rowAction}>
+            <button
+              type="button"
+              className={styles.rowAction}
+              aria-label={`Открыть лид ${getLeadDisplayName(lead)}`}
+            >
               Открыть
             </button>
           </td>
@@ -475,7 +564,7 @@ const Leads: React.FC = () => {
               <button
                 type="button"
                 className={styles.dangerButton}
-                onClick={handleBulkDelete}
+                onClick={() => setIsDeleteModalOpen(true)}
               >
                 Удалить выбранные
               </button>
@@ -506,6 +595,11 @@ const Leads: React.FC = () => {
                             type="checkbox"
                             checked={isAllSelected}
                             onChange={toggleSelectAll}
+                            aria-label={
+                              isAllSelected
+                                ? 'Снять выделение со всех лидов в таблице'
+                                : 'Выбрать всех лидов в таблице'
+                            }
                           />
                           <span className={styles.customCheckbox} aria-hidden="true" />
                         </label>
@@ -623,6 +717,22 @@ const Leads: React.FC = () => {
           </>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setIsDeleteModalOpen(false);
+          }
+        }}
+        onConfirm={handleBulkDelete}
+        title="Удалить выбранные лиды?"
+        message={deleteModalMessage}
+        confirmText={selectedLeadCount > 0 ? `Удалить ${pluralizeLead(selectedLeadCount)}` : 'Удалить'}
+        cancelText="Отмена"
+        variant="danger"
+        loading={isDeleting}
+      />
 
       <AddLeadModal
         isOpen={isAddModalOpen}
