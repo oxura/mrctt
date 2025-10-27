@@ -1,30 +1,33 @@
 import { Request, Response, NextFunction } from 'express';
 import leadsService from '../services/leadsService';
+import { AppError } from '../utils/appError';
+import {
+  leadsListQuerySchema,
+  createLeadSchema,
+  updateLeadSchema,
+  updateLeadStatusSchema,
+} from '../validators/leads';
 
 export class LeadsController {
   async list(req: Request, res: Response, next: NextFunction) {
     try {
       const tenantId = req.tenantId!;
-      const {
-        status,
-        assigned_to,
-        product_id,
-        search,
-        sort_by,
-        sort_direction,
-        page,
-        page_size,
-      } = req.query;
+
+      const parsed = leadsListQuerySchema.safeParse(req.query);
+
+      if (!parsed.success) {
+        throw new AppError('Validation failed', 400, parsed.error.flatten().fieldErrors);
+      }
 
       const filters = {
-        status: status as string | undefined,
-        assigned_to: assigned_to as string | undefined,
-        product_id: product_id as string | undefined,
-        search: search as string | undefined,
-        sort_by: sort_by as string | undefined,
-        sort_direction: (sort_direction as 'asc' | 'desc') || 'desc',
-        page: page ? parseInt(page as string, 10) : 1,
-        page_size: page_size ? parseInt(page_size as string, 10) : 25,
+        status: parsed.data.status,
+        assigned_to: parsed.data.assigned_to,
+        product_id: parsed.data.product_id,
+        search: parsed.data.search,
+        sort_by: parsed.data.sort_by,
+        sort_direction: parsed.data.sort_direction || 'desc',
+        page: parsed.data.page || 1,
+        page_size: parsed.data.page_size || 25,
       };
 
       const result = await leadsService.listLeads(tenantId, filters);
@@ -42,9 +45,14 @@ export class LeadsController {
     try {
       const tenantId = req.tenantId!;
       const userId = req.user?.id;
-      const leadData = req.body;
 
-      const lead = await leadsService.createLead(tenantId, leadData, userId);
+      const parsed = createLeadSchema.safeParse(req.body);
+
+      if (!parsed.success) {
+        throw new AppError('Validation failed', 400, parsed.error.flatten().fieldErrors);
+      }
+
+      const lead = await leadsService.createLead(tenantId, parsed.data, userId);
 
       res.status(201).json({
         status: 'success',
@@ -76,9 +84,14 @@ export class LeadsController {
       const tenantId = req.tenantId!;
       const userId = req.user?.id;
       const { id } = req.params;
-      const updateData = req.body;
 
-      const lead = await leadsService.updateLead(tenantId, id, updateData, userId);
+      const parsed = updateLeadSchema.safeParse(req.body);
+
+      if (!parsed.success) {
+        throw new AppError('Validation failed', 400, parsed.error.flatten().fieldErrors);
+      }
+
+      const lead = await leadsService.updateLead(tenantId, id, parsed.data, userId);
 
       res.status(200).json({
         status: 'success',
@@ -94,16 +107,14 @@ export class LeadsController {
       const tenantId = req.tenantId!;
       const userId = req.user?.id;
       const { id } = req.params;
-      const { status } = req.body;
 
-      if (!status) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Status is required',
-        });
+      const parsed = updateLeadStatusSchema.safeParse(req.body);
+
+      if (!parsed.success) {
+        throw new AppError('Validation failed', 400, parsed.error.flatten().fieldErrors);
       }
 
-      const lead = await leadsService.updateLeadStatus(tenantId, id, status, userId);
+      const lead = await leadsService.updateLeadStatus(tenantId, id, parsed.data.status, userId);
 
       res.status(200).json({
         status: 'success',
