@@ -1,12 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import AppLayout from '../../layouts/AppLayout';
+import AddLeadModal from '../../components/modals/AddLeadModal';
+import { useLeads, Lead, CreateLeadDto } from '../../hooks/useLeads';
+import { leadStatusMeta } from '../../data/leads';
 import styles from './Leads.module.css';
-import {
-  leadsMock,
-  leadStatusMeta,
-  LeadRecord,
-  LeadStatus,
-} from '../../data/leads';
 
 const pageSizeOptions = [25, 50, 100];
 const viewModes = [
@@ -15,8 +12,7 @@ const viewModes = [
 ] as const;
 
 type ViewMode = (typeof viewModes)[number]['id'];
-
-type SortColumn = 'createdAt' | 'name' | 'value' | 'status';
+type SortColumn = 'created_at' | 'first_name' | 'status';
 
 const currencyFormatter = new Intl.NumberFormat('ru-RU', {
   style: 'currency',
@@ -35,13 +31,25 @@ const dateFormatter = (value: string, withTime = true) => {
 const Leads: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | LeadStatus>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | string>('all');
   const [managerFilter, setManagerFilter] = useState<'all' | string>('all');
   const [pageSize, setPageSize] = useState(pageSizeOptions[0]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [sortColumn, setSortColumn] = useState<SortColumn>('createdAt');
+  const [sortColumn, setSortColumn] = useState<SortColumn>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
+
+  const { data, loading, error, setFilters, createLead, updateLeadStatus, deleteLead } = useLeads({
+    search: searchTerm || undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    assigned_to: managerFilter !== 'all' ? managerFilter : undefined,
+    sort_by: sortColumn,
+    sort_direction: sortDirection,
+    page: currentPage,
+    page_size: pageSize,
+  });
 
   useEffect(() => {
     setCurrentPage(1);
@@ -53,61 +61,37 @@ const Leads: React.FC = () => {
     }
   }, [viewMode, selectedRows.length]);
 
+  useEffect(() => {
+    setFilters({
+      search: searchTerm || undefined,
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      assigned_to: managerFilter !== 'all' ? managerFilter : undefined,
+      sort_by: sortColumn,
+      sort_direction: sortDirection,
+      page: currentPage,
+      page_size: pageSize,
+    });
+  }, [searchTerm, statusFilter, managerFilter, sortColumn, sortDirection, currentPage, pageSize, setFilters]);
+
   const managerOptions = useMemo(() => {
-    const managers = Array.from(new Set(leadsMock.map((lead) => lead.manager)));
+    if (!data?.leads) return [];
+    const managers = Array.from(
+      new Set(data.leads.map((lead) => lead.assigned_name).filter(Boolean))
+    );
     return managers.sort();
-  }, []);
+  }, [data?.leads]);
 
-  const filteredLeads = useMemo(() => {
-    return leadsMock.filter((lead) => {
-      const matchesSearch = searchTerm.trim().length === 0
-        ? true
-        : [lead.name, lead.email, lead.phone, lead.product, lead.id]
-            .join(' ')
-            .toLowerCase()
-            .includes(searchTerm.trim().toLowerCase());
+  const leads = data?.leads || [];
+  const total = data?.total || 0;
+  const totalPages = data?.total_pages || 1;
 
-      const matchesStatus = statusFilter === 'all' ? true : lead.status === statusFilter;
-      const matchesManager = managerFilter === 'all' ? true : lead.manager === managerFilter;
-
-      return matchesSearch && matchesStatus && matchesManager;
-    });
-  }, [searchTerm, statusFilter, managerFilter]);
-
-  const sortedLeads = useMemo(() => {
-    const leadsCopy = [...filteredLeads];
-
-    leadsCopy.sort((a, b) => {
-      let comparison = 0;
-
-      if (sortColumn === 'createdAt') {
-        comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      } else if (sortColumn === 'value') {
-        comparison = (a.value ?? 0) - (b.value ?? 0);
-      } else if (sortColumn === 'name') {
-        comparison = a.name.localeCompare(b.name, 'ru');
-      } else if (sortColumn === 'status') {
-        const order = Object.keys(leadStatusMeta) as LeadStatus[];
-        comparison = order.indexOf(a.status) - order.indexOf(b.status);
-      }
-
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-
-    return leadsCopy;
-  }, [filteredLeads, sortColumn, sortDirection]);
-
-  const totalPages = Math.max(1, Math.ceil(sortedLeads.length / pageSize));
-  const pageStartIndex = (currentPage - 1) * pageSize;
-  const paginatedLeads = sortedLeads.slice(pageStartIndex, pageStartIndex + pageSize);
-  const isAllSelected = paginatedLeads.length > 0 && paginatedLeads.every((lead) => selectedRows.includes(lead.id));
+  const isAllSelected = leads.length > 0 && leads.every((lead) => selectedRows.includes(lead.id));
 
   const toggleSelectAll = () => {
     if (isAllSelected) {
-      setSelectedRows((prev) => prev.filter((id) => !paginatedLeads.some((lead) => lead.id === id)));
+      setSelectedRows([]);
     } else {
-      const pageIds = paginatedLeads.map((lead) => lead.id);
-      setSelectedRows((prev) => Array.from(new Set([...prev, ...pageIds])));
+      setSelectedRows(leads.map((lead) => lead.id));
     }
   };
 
@@ -122,19 +106,64 @@ const Leads: React.FC = () => {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortColumn(column);
-      setSortDirection(column === 'name' ? 'asc' : 'desc');
+      setSortDirection(column === 'first_name' ? 'asc' : 'desc');
     }
   };
 
-  const handleBulkAction = (action: 'delete' | 'status') => {
-    // Placeholder для будущей интеграции с API
-    console.info(`Bulk action: ${action}`, selectedRows);
-    setSelectedRows([]);
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Удалить выбранные лиды (${selectedRows.length})?`)) {
+      return;
+    }
+
+    try {
+      await Promise.all(selectedRows.map((id) => deleteLead(id)));
+      setSelectedRows([]);
+    } catch (err) {
+      console.error('Failed to delete leads:', err);
+    }
   };
 
-  const renderTableRows = (leads: LeadRecord[]) => {
-    return leads.map((lead) => {
-      const statusMeta = leadStatusMeta[lead.status];
+  const handleAddLead = async (leadData: CreateLeadDto) => {
+    await createLead(leadData);
+  };
+
+  const handleDragStart = (e: React.DragEvent, leadId: string) => {
+    setDraggedLeadId(leadId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (e: React.DragEvent, newStatus: string) => {
+    e.preventDefault();
+
+    if (!draggedLeadId) return;
+
+    try {
+      await updateLeadStatus(draggedLeadId, newStatus);
+    } catch (err) {
+      console.error('Failed to update status:', err);
+    } finally {
+      setDraggedLeadId(null);
+    }
+  };
+
+  const getLeadDisplayName = (lead: Lead) => {
+    const parts = [lead.first_name, lead.last_name].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : 'Без имени';
+  };
+
+  const renderTableRows = (leadsToRender: Lead[]) => {
+    return leadsToRender.map((lead) => {
+      const statusMeta = leadStatusMeta[lead.status as keyof typeof leadStatusMeta] || {
+        label: lead.status,
+        description: '',
+        accent: '#6b7280',
+      };
+
       return (
         <tr key={lead.id} className={styles.tableRow}>
           <td>
@@ -149,10 +178,10 @@ const Leads: React.FC = () => {
           </td>
           <td>
             <div className={styles.leadMainCell}>
-              <div className={styles.leadName}>{lead.name}</div>
+              <div className={styles.leadName}>{getLeadDisplayName(lead)}</div>
               <div className={styles.leadMeta}>
-                <span>{lead.phone}</span>
-                <span>{lead.email}</span>
+                {lead.phone && <span>{lead.phone}</span>}
+                {lead.email && <span>{lead.email}</span>}
               </div>
             </div>
           </td>
@@ -166,31 +195,35 @@ const Leads: React.FC = () => {
             <div className={styles.statusHint}>{statusMeta.description}</div>
           </td>
           <td>
-            <div className={styles.tableProduct}>{lead.product}</div>
-            {lead.cohortName && <div className={styles.tableSub}>{lead.cohortName}</div>}
+            <div className={styles.tableProduct}>{lead.product_name || '—'}</div>
+            {lead.group_name && <div className={styles.tableSub}>{lead.group_name}</div>}
           </td>
           <td>
-            <div className={styles.managerBadge}>{lead.manager}</div>
+            <div className={styles.managerBadge}>{lead.assigned_name || '—'}</div>
           </td>
           <td>
-            <div>{dateFormatter(lead.createdAt)}</div>
-            {lead.appointmentDate && (
-              <div className={styles.tableSub}>Визит: {dateFormatter(lead.appointmentDate)}</div>
+            <div>{dateFormatter(lead.created_at)}</div>
+            {lead.custom_fields?.appointmentDate && (
+              <div className={styles.tableSub}>
+                Визит: {dateFormatter(lead.custom_fields.appointmentDate)}
+              </div>
             )}
           </td>
           <td>
-            <div>{lead.source}</div>
-            {lead.utmSource && <div className={styles.tableSub}>utm: {lead.utmSource}</div>}
+            <div>{lead.source || '—'}</div>
+            {lead.utm_source && <div className={styles.tableSub}>utm: {lead.utm_source}</div>}
           </td>
           <td>
-            {lead.value ? (
-              <div className={styles.value}>{currencyFormatter.format(lead.value)}</div>
+            {lead.custom_fields?.value ? (
+              <div className={styles.value}>{currencyFormatter.format(lead.custom_fields.value)}</div>
             ) : (
               <span className={styles.tableSub}>—</span>
             )}
           </td>
           <td>
-            <button type="button" className={styles.rowAction}>Открыть</button>
+            <button type="button" className={styles.rowAction}>
+              Открыть
+            </button>
           </td>
         </tr>
       );
@@ -198,9 +231,10 @@ const Leads: React.FC = () => {
   };
 
   const renderBoard = () => {
-    const columns = (Object.keys(leadStatusMeta) as LeadStatus[]).map((status) => ({
+    const statuses = Object.keys(leadStatusMeta) as Array<keyof typeof leadStatusMeta>;
+    const columns = statuses.map((status) => ({
       status,
-      leads: sortedLeads.filter((lead) => lead.status === status),
+      leads: leads.filter((lead) => lead.status === status),
     }));
 
     return (
@@ -208,7 +242,12 @@ const Leads: React.FC = () => {
         {columns.map((column) => {
           const statusMeta = leadStatusMeta[column.status];
           return (
-            <section key={column.status} className={styles.boardColumn}>
+            <section
+              key={column.status}
+              className={styles.boardColumn}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, column.status)}
+            >
               <header
                 className={styles.boardColumnHeader}
                 style={{ borderColor: `${statusMeta.accent}40` }}
@@ -225,29 +264,32 @@ const Leads: React.FC = () => {
                   <div className={styles.boardEmpty}>Лидов нет</div>
                 ) : (
                   column.leads.map((lead) => (
-                    <article key={lead.id} className={styles.boardCard}>
+                    <article
+                      key={lead.id}
+                      className={styles.boardCard}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, lead.id)}
+                    >
                       <header className={styles.boardCardHeader}>
                         <div>
-                          <div className={styles.boardCardTitle}>{lead.name}</div>
-                          <div className={styles.boardCardMeta}>{lead.product}</div>
+                          <div className={styles.boardCardTitle}>{getLeadDisplayName(lead)}</div>
+                          <div className={styles.boardCardMeta}>{lead.product_name || '—'}</div>
                         </div>
-                        {lead.value && (
+                        {lead.custom_fields?.value && (
                           <div className={styles.boardCardValue}>
-                            {currencyFormatter.format(lead.value)}
+                            {currencyFormatter.format(lead.custom_fields.value)}
                           </div>
                         )}
                       </header>
 
                       <div className={styles.boardCardInfo}>
-                        <span>📞 {lead.phone}</span>
-                        <span>👤 {lead.manager}</span>
-                        <span>🕒 {dateFormatter(lead.createdAt, false)}</span>
-                        {lead.appointmentDate && (
-                          <span>📅 Прием: {dateFormatter(lead.appointmentDate)}</span>
+                        {lead.phone && <span>📞 {lead.phone}</span>}
+                        {lead.assigned_name && <span>👤 {lead.assigned_name}</span>}
+                        <span>🕒 {dateFormatter(lead.created_at, false)}</span>
+                        {lead.custom_fields?.appointmentDate && (
+                          <span>📅 Прием: {dateFormatter(lead.custom_fields.appointmentDate)}</span>
                         )}
-                        {lead.cohortName && (
-                          <span>🎓 {lead.cohortName}</span>
-                        )}
+                        {lead.group_name && <span>🎓 {lead.group_name}</span>}
                       </div>
 
                       <footer className={styles.boardCardFooter}>
@@ -279,7 +321,11 @@ const Leads: React.FC = () => {
             <button type="button" className={styles.secondaryButton}>
               Импорт CSV
             </button>
-            <button type="button" className={styles.primaryButton}>
+            <button
+              type="button"
+              className={styles.primaryButton}
+              onClick={() => setIsAddModalOpen(true)}
+            >
               + Добавить лид
             </button>
           </div>
@@ -301,12 +347,12 @@ const Leads: React.FC = () => {
                 Статус
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as 'all' | LeadStatus)}
+                  onChange={(e) => setStatusFilter(e.target.value)}
                 >
                   <option value="all">Все</option>
-                  {(Object.keys(leadStatusMeta) as LeadStatus[]).map((status) => (
+                  {Object.entries(leadStatusMeta).map(([status, meta]) => (
                     <option key={status} value={status}>
-                      {leadStatusMeta[status].label}
+                      {meta.label}
                     </option>
                   ))}
                 </select>
@@ -316,7 +362,7 @@ const Leads: React.FC = () => {
                 Менеджер
                 <select
                   value={managerFilter}
-                  onChange={(e) => setManagerFilter(e.target.value as 'all' | string)}
+                  onChange={(e) => setManagerFilter(e.target.value)}
                 >
                   <option value="all">Все</option>
                   {managerOptions.map((manager) => (
@@ -360,131 +406,165 @@ const Leads: React.FC = () => {
 
         {selectedRows.length > 0 && (
           <section className={styles.bulkActions}>
-            <div>
-              Выбрано: {selectedRows.length}
-            </div>
+            <div>Выбрано: {selectedRows.length}</div>
             <div className={styles.bulkButtons}>
-              <button type="button" onClick={() => handleBulkAction('status')}>
-                Сменить статус
-              </button>
-              <button type="button" className={styles.dangerButton} onClick={() => handleBulkAction('delete')}>
+              <button
+                type="button"
+                className={styles.dangerButton}
+                onClick={handleBulkDelete}
+              >
                 Удалить выбранные
               </button>
             </div>
-            <button type="button" className={styles.clearSelection} onClick={() => setSelectedRows([])}>
+            <button
+              type="button"
+              className={styles.clearSelection}
+              onClick={() => setSelectedRows([])}
+            >
               Снять выделение
             </button>
           </section>
         )}
 
-        {viewMode === 'list' ? (
-          <div className={styles.tableWrapper}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>
-                    <label className={styles.checkboxLabel}>
-                      <input type="checkbox" checked={isAllSelected} onChange={toggleSelectAll} />
-                      <span className={styles.customCheckbox} aria-hidden="true" />
-                    </label>
-                  </th>
-                  <th>
-                    <button type="button" onClick={() => handleSort('name')} className={styles.sortButton}>
-                      Лид
-                      <span aria-hidden="true">{sortColumn === 'name' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}</span>
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" onClick={() => handleSort('status')} className={styles.sortButton}>
-                      Статус
-                      <span aria-hidden="true">{sortColumn === 'status' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}</span>
-                    </button>
-                  </th>
-                  <th>Продукт</th>
-                  <th>Ответственный</th>
-                  <th>
-                    <button type="button" onClick={() => handleSort('createdAt')} className={styles.sortButton}>
-                      Дата
-                      <span aria-hidden="true">{sortColumn === 'createdAt' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}</span>
-                    </button>
-                  </th>
-                  <th>Источник</th>
-                  <th>
-                    <button type="button" onClick={() => handleSort('value')} className={styles.sortButton}>
-                      Сумма
-                      <span aria-hidden="true">{sortColumn === 'value' ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}</span>
-                    </button>
-                  </th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedLeads.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className={styles.emptyState}>
-                      Под критерии поиска ничего не найдено. Попробуйте изменить фильтры.
-                    </td>
-                  </tr>
-                ) : (
-                  renderTableRows(paginatedLeads)
-                )}
-              </tbody>
-            </table>
+        {loading && <div className={styles.loading}>Загрузка...</div>}
+        {error && <div className={styles.error}>Ошибка: {error}</div>}
 
-            {paginatedLeads.length > 0 && (
-              <footer className={styles.pagination}>
-                <div>
-                  Показано {pageStartIndex + 1}–{Math.min(pageStartIndex + pageSize, sortedLeads.length)} из {sortedLeads.length}
-                </div>
-                <div className={styles.paginationControls}>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Назад
-                  </button>
-                  <div className={styles.paginationPages}>
-                    {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+        {!loading && !error && (
+          <>
+            {viewMode === 'list' ? (
+              <div className={styles.tableWrapper}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>
+                        <label className={styles.checkboxLabel}>
+                          <input
+                            type="checkbox"
+                            checked={isAllSelected}
+                            onChange={toggleSelectAll}
+                          />
+                          <span className={styles.customCheckbox} aria-hidden="true" />
+                        </label>
+                      </th>
+                      <th>
+                        <button
+                          type="button"
+                          onClick={() => handleSort('first_name')}
+                          className={styles.sortButton}
+                        >
+                          Лид
+                          <span aria-hidden="true">
+                            {sortColumn === 'first_name'
+                              ? sortDirection === 'asc'
+                                ? '▲'
+                                : '▼'
+                              : '↕'}
+                          </span>
+                        </button>
+                      </th>
+                      <th>
+                        <button
+                          type="button"
+                          onClick={() => handleSort('status')}
+                          className={styles.sortButton}
+                        >
+                          Статус
+                          <span aria-hidden="true">
+                            {sortColumn === 'status'
+                              ? sortDirection === 'asc'
+                                ? '▲'
+                                : '▼'
+                              : '↕'}
+                          </span>
+                        </button>
+                      </th>
+                      <th>Продукт</th>
+                      <th>Ответственный</th>
+                      <th>
+                        <button
+                          type="button"
+                          onClick={() => handleSort('created_at')}
+                          className={styles.sortButton}
+                        >
+                          Дата
+                          <span aria-hidden="true">
+                            {sortColumn === 'created_at'
+                              ? sortDirection === 'asc'
+                                ? '▲'
+                                : '▼'
+                              : '↕'}
+                          </span>
+                        </button>
+                      </th>
+                      <th>Источник</th>
+                      <th>Сумма</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leads.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className={styles.emptyState}>
+                          Лиды не найдены. Попробуйте изменить фильтры или добавьте первый лид.
+                        </td>
+                      </tr>
+                    ) : (
+                      renderTableRows(leads)
+                    )}
+                  </tbody>
+                </table>
+
+                {leads.length > 0 && (
+                  <footer className={styles.pagination}>
+                    <div>
+                      Показано {(currentPage - 1) * pageSize + 1}–
+                      {Math.min(currentPage * pageSize, total)} из {total}
+                    </div>
+                    <div className={styles.paginationControls}>
                       <button
-                        key={pageNumber}
                         type="button"
-                        onClick={() => setCurrentPage(pageNumber)}
-                        className={pageNumber === currentPage ? styles.currentPage : ''}
+                        onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
                       >
-                        {pageNumber}
+                        Назад
                       </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Далее
-                  </button>
-                </div>
-              </footer>
-            )}
-          </div>
-        ) : (
-          renderBoard()
-        )}
-
-        <section className={styles.mobileSummary}>
-          <h2>Быстрые метрики</h2>
-          <div className={styles.mobileSummaryGrid}>
-            {(Object.keys(leadStatusMeta) as LeadStatus[]).map((status) => (
-              <div key={status} className={styles.mobileSummaryCard}>
-                <span className={styles.mobileSummaryLabel}>{leadStatusMeta[status].label}</span>
-                <span className={styles.mobileSummaryValue}>
-                  {filteredLeads.filter((lead) => lead.status === status).length}
-                </span>
+                      <div className={styles.paginationPages}>
+                        {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+                          (pageNumber) => (
+                            <button
+                              key={pageNumber}
+                              type="button"
+                              onClick={() => setCurrentPage(pageNumber)}
+                              className={pageNumber === currentPage ? styles.currentPage : ''}
+                            >
+                              {pageNumber}
+                            </button>
+                          )
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Далее
+                      </button>
+                    </div>
+                  </footer>
+                )}
               </div>
-            ))}
-          </div>
-        </section>
+            ) : (
+              renderBoard()
+            )}
+          </>
+        )}
       </div>
+
+      <AddLeadModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSubmit={handleAddLead}
+      />
     </AppLayout>
   );
 };
