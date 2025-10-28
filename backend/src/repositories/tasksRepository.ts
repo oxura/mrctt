@@ -24,7 +24,7 @@ export interface CreateTaskDto {
   assigned_to?: string | null;
   title: string;
   description?: string | null;
-  due_date?: Date | null;
+  due_date?: Date | string | null;
   priority?: string;
 }
 
@@ -32,7 +32,7 @@ export interface UpdateTaskDto {
   assigned_to?: string | null;
   title?: string;
   description?: string | null;
-  due_date?: Date | null;
+  due_date?: Date | string | null;
   is_completed?: boolean;
   priority?: string;
 }
@@ -60,6 +60,22 @@ export class TasksRepository {
 
     const result = await pool.query(query, values);
     return this.findById(tenantId, result.rows[0].id);
+  }
+
+  async getOwnerIdIfExists(tenantId: string, taskId: string): Promise<string | null> {
+    const query = `
+      SELECT assigned_to
+      FROM tasks
+      WHERE id = $1 AND tenant_id = $2
+    `;
+
+    const result = await pool.query(query, [taskId, tenantId]);
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return result.rows[0].assigned_to || null;
   }
 
   async findById(tenantId: string, taskId: string): Promise<Task> {

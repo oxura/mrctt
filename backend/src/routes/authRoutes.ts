@@ -3,19 +3,20 @@ import { register, login, getCurrentUser, refresh, logout } from '../controllers
 import { requestPasswordReset, resetPassword } from '../controllers/passwordResetController';
 import { authenticate } from '../middleware/auth';
 import {
-  authLoginLimiter,
-  authPasswordResetLimiter,
-  authRegisterLimiter,
+  loginLimiter,
+  registerLimiter,
+  forgotPasswordLimiter,
+  resetPasswordLimiter,
   authRefreshLimiter,
 } from '../middleware/rateLimiter';
 import { csrfProtection } from '../middleware/csrf';
 
 const router = Router();
 
-router.post('/register', authRegisterLimiter, register);
-router.post('/login', authLoginLimiter, login);
-router.post('/password/forgot', authPasswordResetLimiter, requestPasswordReset);
-router.post('/password/reset', authPasswordResetLimiter, resetPassword);
+router.post('/register', registerLimiter, register);
+router.post('/login', loginLimiter, login);
+router.post('/password/forgot', forgotPasswordLimiter, requestPasswordReset);
+router.post('/password/reset', resetPasswordLimiter, resetPassword);
 
 router.use(csrfProtection);
 

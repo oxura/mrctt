@@ -2,12 +2,19 @@ import { z } from 'zod';
 
 const MAX_CUSTOM_FIELDS_SIZE = 10 * 1024;
 
-const customFieldsSchema = z.record(z.any()).optional().refine((data) => {
+const customFieldsSchema = z.unknown().optional().refine((data) => {
   if (!data) return true;
-  const jsonSize = JSON.stringify(data).length;
-  return jsonSize <= MAX_CUSTOM_FIELDS_SIZE;
+  if (typeof data !== 'object' || data === null) {
+    return false;
+  }
+  try {
+    const jsonString = JSON.stringify(data);
+    return jsonString.length <= MAX_CUSTOM_FIELDS_SIZE;
+  } catch (error) {
+    return false;
+  }
 }, {
-  message: `custom_fields must not exceed ${MAX_CUSTOM_FIELDS_SIZE} bytes when serialized`,
+  message: `custom_fields must be a valid JSON object or array and not exceed ${MAX_CUSTOM_FIELDS_SIZE} bytes when serialized`,
 });
 
 export const leadStatusEnum = z.enum(['new', 'working', 'awaiting_payment', 'won', 'lost']);

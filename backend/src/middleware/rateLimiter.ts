@@ -1,6 +1,6 @@
 import rateLimit from 'express-rate-limit';
 
-export const authLoginLimiter = rateLimit({
+export const loginLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 5,
   skipSuccessfulRequests: true,
@@ -13,23 +13,54 @@ export const authLoginLimiter = rateLimit({
   message: 'Too many login attempts. Please try again in a minute.',
   standardHeaders: true,
   legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      status: 'error',
+      message: 'Too many login attempts. Please try again in a minute.',
+    });
+  },
 });
 
-export const authPasswordResetLimiter = rateLimit({
+export const forgotPasswordLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 3,
   keyGenerator: (req) => {
     const email = req.body?.email || '';
     const tenantSlug = req.body?.tenantSlug || '';
     const ip = req.ip || 'unknown';
-    return `password-reset:${ip}:${email}:${tenantSlug}`;
+    return `forgot-password:${ip}:${email}:${tenantSlug}`;
   },
   message: 'Too many password reset requests. Please try again in a minute.',
   standardHeaders: true,
   legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      status: 'error',
+      message: 'Too many password reset requests. Please try again in a minute.',
+    });
+  },
 });
 
-export const authRegisterLimiter = rateLimit({
+export const resetPasswordLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 5,
+  keyGenerator: (req) => {
+    const ip = req.ip || 'unknown';
+    const token = req.body?.token?.substring(0, 10) || 'unknown';
+    return `reset-password:${ip}:${token}`;
+  },
+  message: 'Too many password reset attempts. Please try again in a minute.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      status: 'error',
+      message: 'Too many password reset attempts. Please try again in a minute.',
+    });
+  },
+});
+
+export const registerLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 3,
   keyGenerator: (req) => {
@@ -39,6 +70,12 @@ export const authRegisterLimiter = rateLimit({
   message: 'Too many registration attempts. Please try again in a minute.',
   standardHeaders: true,
   legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      status: 'error',
+      message: 'Too many registration attempts. Please try again in a minute.',
+    });
+  },
 });
 
 const createTenantUserLimiter = (prefix: string, limit: number, windowMs = 60 * 1000) =>

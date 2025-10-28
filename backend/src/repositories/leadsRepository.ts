@@ -37,7 +37,7 @@ export interface CreateLeadDto {
   utm_source?: string | null;
   utm_medium?: string | null;
   utm_campaign?: string | null;
-  custom_fields?: Record<string, any>;
+  custom_fields?: unknown;
 }
 
 export interface UpdateLeadDto {
@@ -53,7 +53,7 @@ export interface UpdateLeadDto {
   utm_source?: string | null;
   utm_medium?: string | null;
   utm_campaign?: string | null;
-  custom_fields?: Record<string, any>;
+  custom_fields?: unknown;
 }
 
 export interface LeadsFilter {
@@ -86,6 +86,13 @@ export class LeadsRepository {
       RETURNING *
     `;
 
+    let customFieldsJson: string;
+    try {
+      customFieldsJson = JSON.stringify(data.custom_fields || {});
+    } catch (error) {
+      throw new AppError('Invalid custom_fields: cannot serialize to JSON', 400);
+    }
+
     const values = [
       tenantId,
       data.product_id || null,
@@ -100,7 +107,7 @@ export class LeadsRepository {
       data.utm_source || null,
       data.utm_medium || null,
       data.utm_campaign || null,
-      JSON.stringify(data.custom_fields || {}),
+      customFieldsJson,
     ];
 
     const result = await pool.query(query, values);
@@ -117,6 +124,22 @@ export class LeadsRepository {
     }
 
     return this.findById(tenantId, lead.id);
+  }
+
+  async getOwnerIdIfExists(tenantId: string, leadId: string): Promise<string | null> {
+    const query = `
+      SELECT assigned_to
+      FROM leads
+      WHERE id = $1 AND tenant_id = $2
+    `;
+
+    const result = await pool.query(query, [leadId, tenantId]);
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return result.rows[0].assigned_to || null;
   }
 
   async findById(tenantId: string, leadId: string): Promise<Lead> {
@@ -346,7 +369,11 @@ export class LeadsRepository {
     if (data.custom_fields !== undefined) {
       paramCount++;
       fields.push(`custom_fields = $${paramCount}`);
-      values.push(JSON.stringify(data.custom_fields));
+      try {
+        values.push(JSON.stringify(data.custom_fields));
+      } catch (error) {
+        throw new AppError('Invalid custom_fields: cannot serialize to JSON', 400);
+      }
     }
 
     if (fields.length === 0) {

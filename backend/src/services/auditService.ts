@@ -7,6 +7,19 @@ interface RecordAuditLogInput extends Omit<CreateAuditLogInput, 'ipAddress' | 'u
   client?: PoolClientLike;
 }
 
+const sanitizeAuditDetails = (details: Record<string, any>): Record<string, any> => {
+  const sanitized = { ...details };
+  const sensitiveFields = ['password', 'token', 'refresh_token', 'access_token', 'csrf_token', 'passwordHash'];
+  
+  for (const field of sensitiveFields) {
+    if (field in sanitized) {
+      delete sanitized[field];
+    }
+  }
+  
+  return sanitized;
+};
+
 export class AuditService {
   private readonly auditRepo: AuditLogRepository;
 
@@ -29,7 +42,7 @@ export class AuditService {
         tenantId: rest.tenantId ?? null,
         userId: rest.userId ?? null,
         resourceId: rest.resourceId ?? null,
-        details: rest.details ?? {},
+        details: sanitizeAuditDetails(rest.details ?? {}),
         ipAddress,
         userAgent,
       },

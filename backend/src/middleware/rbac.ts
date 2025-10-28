@@ -135,6 +135,8 @@ export const isResourceOwner = (
 /**
  * Combined middleware: checks permission and ownership
  * For scoped permissions like 'leads:update:own'
+ * Uses a getResourceOwnerId function that returns null if resource doesn't exist
+ * to prevent information leakage about resource existence
  */
 export const requirePermissionWithOwnership = (
   permissionAll: string,
@@ -168,7 +170,7 @@ export const requirePermissionWithOwnership = (
 
       const resourceOwnerId = await getResourceOwnerId(req);
 
-      if (!isResourceOwner(req.user.id, resourceOwnerId)) {
+      if (resourceOwnerId === null || !isResourceOwner(req.user.id, resourceOwnerId)) {
         return next(new AppError('Access denied. You can only access your own resources.', 403));
       }
 
