@@ -13,7 +13,10 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     let token: string | undefined;
 
     const authHeader = req.headers.authorization;
-    if (env.ALLOW_BEARER_TOKENS && authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      if (env.NODE_ENV === 'production' && !env.ALLOW_BEARER_TOKENS) {
+        throw new AppError('Bearer tokens not supported for browser clients in production. Use cookies.', 401);
+      }
       token = authHeader.substring(7);
     } else if (req.cookies?.access_token) {
       token = req.cookies.access_token;

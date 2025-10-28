@@ -183,19 +183,91 @@ API_URL=                                    # Optional for CSP
    - Verify custom_fields size limit enforcement
    - Test pagination with large offsets
 
+### 13. Bearer Token Deprecation (Comment 1)
+
+- Bearer token authentication now disabled by default in production for SPAs
+- Can be enabled via `ALLOW_BEARER_TOKENS=true` for API-only clients
+- Enforced at the middleware level with clear error messages
+- Cookie-based authentication is now the canonical path
+
+### 14. Tenant Resolution Canonical UUID (Comment 2)
+
+- Refactored `tenantGuard` to always set `req.tenantId` to canonical UUID
+- Incoming identifiers (slug or UUID) are resolved early and normalized
+- Platform owner path performs same normalization
+- Added logging for tenant access denials
+- Comments clarify `req.tenantId` is always UUID
+
+### 15. RBAC Ownership Check Improvements (Comment 3)
+
+- Added `getOwnerIdIfExists()` methods to repositories
+- Returns `null` if resource doesn't exist (no 404 leak)
+- Ownership middleware now returns uniform 403 errors
+- Prevents information disclosure about resource existence
+- Applied to both leads and tasks
+
+### 16. Migration Rollback Support (Comment 4)
+
+- Created `.down.sql` rollback scripts for all migrations
+- Enhanced migrate.ts with `rollbackToVersion()` function
+- Usage: `npm run migrate down <target-version>`
+- Down migrations use `IF EXISTS` for idempotency
+
+### 17. Password Reset Timing Protection (Comment 7)
+
+- Added 200-400ms random delay to password reset responses
+- Prevents user enumeration via timing attacks
+- Delay applied after processing completes
+- Uniform response time regardless of user existence
+
+### 18. Per-Endpoint Rate Limiters (Comment 10)
+
+- Renamed limiters for clarity: `loginLimiter`, `registerLimiter`, `forgotPasswordLimiter`, `resetPasswordLimiter`
+- All limiters now return consistent JSON error responses
+- Applied to respective auth routes
+- Includes `Retry-After` headers via express-rate-limit standards
+
+### 19. PII Sanitization in Logs (Comment 22)
+
+- Sanitizes sensitive fields (password, token, csrf_token, etc.) in request logger
+- Masks email addresses in production logs
+- Strips PII from audit log details
+- Body logging disabled in production
+
+### 20. CSP and CORS Improvements (Comments 14, 26)
+
+- CSP connectSrc filters empty strings and strips trailing slashes
+- CORS uses origin validation function with allowlist
+- Supports multiple origins for staging/production
+- Prevents CORS bypass via origin manipulation
+
+### 21. Custom Fields JSON Validation (Comment 19)
+
+- Uses `z.unknown()` with refine for proper validation
+- Catches JSON.stringify errors in validators
+- Repository adds try-catch for double protection
+- Returns 400 with clear error message on circular references
+
 ## Future Recommendations (Not Implemented)
 
 These items were identified but not implemented due to scope/complexity:
 
-- **Comment 10:** Comprehensive test suite (Jest + Supertest for backend, RTL for frontend, E2E with Playwright)
-- **Comment 11:** Redis caching for dashboard KPIs
-- **Comment 13:** Full accessibility audit and keyboard navigation
-- **Comment 14:** Pagination UI improvements (sliding window)
-- **Comment 15-16:** Optimistic updates and refetch patterns for leads
-- **Comment 17:** Task permissions review and alignment
-- **Comment 18-24, 26, 29, 31:** Feature gaps (products, groups, forms, team management, billing, etc.)
-- **Comment 28:** Tenant slug uniqueness validation and conflict handling
-- **Comment 20:** Migration rollback scripts
+- **Comment 8:** Major PRD modules (Products, Groups, Forms, Team, Settings, Billing, Superadmin)
+- **Comment 9:** Mobile web flows and touch targets
+- **Comment 11:** Comprehensive test suite (Jest + Supertest for backend, RTL for frontend, E2E with Playwright)
+- **Comment 12:** OpenAPI/Swagger documentation
+- **Comment 13:** Auth store token cleanup (already clean - no action needed)
+- **Comment 15:** Full accessibility audit and keyboard navigation
+- **Comment 17:** Per-tenant rate limiting
+- **Comment 18:** Lead status constraints and transitions
+- **Comment 20:** Dashboard empty states
+- **Comment 21:** Documentation accuracy audit
+- **Comment 23:** Global search backend
+- **Comment 24:** Token rotation and hashing guidance
+- **Comment 25:** Tenant seeding utilities
+- **Comment 27:** Kanban virtualization
+- **Comment 28:** PRD clarifications document
+- **Comment 29:** CSRF refresh token enforcement
 
 ## Deployment Notes
 

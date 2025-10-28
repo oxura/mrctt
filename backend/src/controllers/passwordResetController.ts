@@ -23,10 +23,22 @@ export const requestPasswordReset = asyncHandler(async (req: Request, res: Respo
     throw new AppError('Validation failed', 400, parsed.error.flatten().fieldErrors);
   }
 
+  const startTime = Date.now();
+  const minDelay = 200;
+  const maxDelay = 400;
+  const targetDelay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+
   await passwordResetService.requestPasswordReset(
     parsed.data.email,
     parsed.data.tenantSlug
   );
+
+  const elapsed = Date.now() - startTime;
+  const remainingDelay = Math.max(0, targetDelay - elapsed);
+
+  if (remainingDelay > 0) {
+    await new Promise((resolve) => setTimeout(resolve, remainingDelay));
+  }
 
   res.status(200).json({
     status: 'success',

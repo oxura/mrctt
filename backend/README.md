@@ -147,9 +147,11 @@ GET /api/v1/health
 - **Middleware**: `tenantGuard` enforces tenant context on protected routes
 
 ### Authentication
-- **Strategy**: JWT with Bearer token
+- **Strategy**: JWT with httpOnly cookies (Bearer tokens deprecated for SPA in production)
 - **Roles**: owner, admin, manager, platform_owner
 - **Middleware**: `authenticate`, `requireRole(...roles)`
+- **CSRF Protection**: Double-submit cookie pattern for all mutating requests
+- **Note**: Bearer token authentication is disabled by default in production. Use cookie-based authentication for SPAs. Bearer tokens may be enabled via `ALLOW_BEARER_TOKENS=true` environment variable for API-only clients.
 
 ### Error Handling
 - **Operational errors**: `AppError` with status codes
@@ -158,19 +160,31 @@ GET /api/v1/health
 
 ### Database Migrations
 - Stored in `/migrations`
-- Numbered sequentially
+- Numbered sequentially with `.sql` (up) and `.down.sql` (rollback) files
 - Tracked in `migrations` table
 - Run with `npm run migrate`
+- Rollback with `npm run migrate down <target-version>`
+- Example: `npm run migrate down 00005_audit_logs.sql` rolls back all migrations after that version
 
 ## Security
 
 - **Password hashing**: bcrypt with 12 salt rounds
-- **JWT**: Signed with secret, configurable expiry
-- **Rate limiting**: 100 requests per minute
-- **Helmet.js**: Security headers with CSP (default self, inline styles allowed for UI, images via https/data, API connections restrained to configured frontend)
-- **Input validation**: Zod schemas
+- **JWT**: Signed with secret, 15 min access tokens, 7-day refresh tokens
+- **Cookies**: httpOnly, secure (in production), sameSite=lax
+- **CSRF Protection**: Double-submit cookie pattern with exemptions for safe methods and auth endpoints
+- **Rate limiting**: 
+  - Global: 100 requests/min per IP
+  - Login: 5 attempts/min per IP+email+tenant
+  - Registration: 3 attempts/min per IP
+  - Password reset: 3 requests/min per IP+email+tenant
+  - Per-tenant/user limits on leads and tasks endpoints
+- **Helmet.js**: Security headers with CSP
+- **HTTPS**: Automatic redirect in production
+- **Input validation**: Zod schemas for all inputs
 - **SQL injection**: Parameterized queries
-- **CORS**: Configured for frontend origin
+- **CORS**: Origin validation with allowlist
+- **PII Protection**: Sensitive fields sanitized in logs and audit trails
+- **Request tracking**: Unique request IDs in headers and logs
 
 ## Logging
 

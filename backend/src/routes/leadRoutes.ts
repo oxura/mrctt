@@ -46,8 +46,7 @@ router.get(
     'leads:read:all',
     'leads:read:own',
     async (req) => {
-      const lead = await leadsRepository.findById(req.tenantId!, req.params.id);
-      return lead.assigned_to;
+      return await leadsRepository.getOwnerIdIfExists(req.tenantId!, req.params.id);
     }
   ),
   leadsController.getOne
@@ -60,8 +59,7 @@ router.patch(
     'leads:update:all',
     'leads:update:own',
     async (req) => {
-      const lead = await leadsRepository.findById(req.tenantId!, req.params.id);
-      return lead.assigned_to;
+      return await leadsRepository.getOwnerIdIfExists(req.tenantId!, req.params.id);
     }
   ),
   auditLog('lead.update', 'lead'),
@@ -75,8 +73,7 @@ router.patch(
     'leads:update:all',
     'leads:update:own',
     async (req) => {
-      const lead = await leadsRepository.findById(req.tenantId!, req.params.id);
-      return lead.assigned_to;
+      return await leadsRepository.getOwnerIdIfExists(req.tenantId!, req.params.id);
     }
   ),
   auditLog('lead.status_change', 'lead'),
@@ -90,8 +87,7 @@ router.delete(
     'leads:delete:all',
     'leads:delete:own',
     async (req) => {
-      const lead = await leadsRepository.findById(req.tenantId!, req.params.id);
-      return lead.assigned_to;
+      return await leadsRepository.getOwnerIdIfExists(req.tenantId!, req.params.id);
     }
   ),
   auditLog('lead.delete', 'lead'),
@@ -104,8 +100,7 @@ router.get(
     'leads:read:all',
     'leads:read:own',
     async (req) => {
-      const lead = await leadsRepository.findById(req.tenantId!, req.params.leadId);
-      return lead.assigned_to;
+      return await leadsRepository.getOwnerIdIfExists(req.tenantId!, req.params.leadId);
     }
   ),
   commentsController.list
@@ -117,8 +112,7 @@ router.post(
     'leads:update:all',
     'leads:update:own',
     async (req) => {
-      const lead = await leadsRepository.findById(req.tenantId!, req.params.leadId);
-      return lead.assigned_to;
+      return await leadsRepository.getOwnerIdIfExists(req.tenantId!, req.params.leadId);
     }
   ),
   auditLog('comment.create', 'lead'),
@@ -131,8 +125,7 @@ router.get(
     'leads:read:all',
     'leads:read:own',
     async (req) => {
-      const lead = await leadsRepository.findById(req.tenantId!, req.params.leadId);
-      return lead.assigned_to;
+      return await leadsRepository.getOwnerIdIfExists(req.tenantId!, req.params.leadId);
     }
   ),
   activitiesController.list
@@ -144,8 +137,7 @@ router.get(
     'leads:read:all',
     'leads:read:own',
     async (req) => {
-      const lead = await leadsRepository.findById(req.tenantId!, req.params.leadId);
-      return lead.assigned_to;
+      return await leadsRepository.getOwnerIdIfExists(req.tenantId!, req.params.leadId);
     }
   ),
   tasksController.list
@@ -158,8 +150,7 @@ router.post(
     'leads:update:all',
     'leads:update:own',
     async (req) => {
-      const lead = await leadsRepository.findById(req.tenantId!, req.params.leadId);
-      return lead.assigned_to;
+      return await leadsRepository.getOwnerIdIfExists(req.tenantId!, req.params.leadId);
     }
   ),
   auditLog('task.create', 'lead'),
@@ -172,8 +163,7 @@ router.patch(
     'tasks:update:all',
     'tasks:update:own',
     async (req) => {
-      const task = await tasksRepository.findById(req.tenantId!, req.params.taskId);
-      return task.assigned_to;
+      return await tasksRepository.getOwnerIdIfExists(req.tenantId!, req.params.taskId);
     }
   ),
   auditLog('task.update', 'task'),
@@ -186,8 +176,7 @@ router.delete(
     'tasks:delete:all',
     'tasks:delete:own',
     async (req) => {
-      const task = await tasksRepository.findById(req.tenantId!, req.params.taskId);
-      return task.assigned_to;
+      return await tasksRepository.getOwnerIdIfExists(req.tenantId!, req.params.taskId);
     }
   ),
   auditLog('task.delete', 'task'),

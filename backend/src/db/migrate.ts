@@ -83,8 +83,78 @@ export async function runMigrations() {
   }
 }
 
+async function rollbackMigration(filename: string) {
+  const downFilePath = path.join(MIGRATIONS_DIR, filename.replace('.sql', '.down.sql'));
+  
+  try {
+    const sql = await fs.readFile(downFilePath, 'utf-8');
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(sql);
+      await client.query('DELETE FROM migrations WHERE name = $1', [filename]);
+      await client.query('COMMIT');
+      logger.info(`✅ Rolled back migration: ${filename}`);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      logger.error(`❌ Failed to rollback migration: ${filename}`, error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      logger.warn(`⚠️  No rollback script found for ${filename}`);
+    } else {
+      throw error;
+    }
+  }
+}
+
+export async function rollbackToVersion(targetVersion: string) {
+  try {
+    logger.info(`Rolling back to version: ${targetVersion}`);
+    await ensureMigrationsTable();
+
+    const appliedMigrations = await getAppliedMigrations();
+    const targetIndex = appliedMigrations.indexOf(targetVersion);
+
+    if (targetIndex === -1) {
+      logger.warn(`Target version ${targetVersion} not found in applied migrations`);
+      return;
+    }
+
+    const migrationsToRollback = appliedMigrations.slice(targetIndex + 1).reverse();
+
+    if (migrationsToRollback.length === 0) {
+      logger.info('✅ No migrations to rollback');
+      return;
+    }
+
+    logger.info(`Rolling back ${migrationsToRollback.length} migration(s)`);
+
+    for (const migration of migrationsToRollback) {
+      await rollbackMigration(migration);
+    }
+
+    logger.info('✅ Rollback completed successfully');
+  } catch (error) {
+    logger.error('Rollback error:', error);
+    throw error;
+  }
+}
+
 if (process.argv[1]?.includes('migrate')) {
-  runMigrations()
-    .then(() => process.exit(0))
-    .catch(() => process.exit(1));
+  const command = process.argv[2];
+  const targetVersion = process.argv[3];
+
+  if (command === 'down' && targetVersion) {
+    rollbackToVersion(targetVersion)
+      .then(() => process.exit(0))
+      .catch(() => process.exit(1));
+  } else {
+    runMigrations()
+      .then(() => process.exit(0))
+      .catch(() => process.exit(1));
+  }
 }
