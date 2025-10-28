@@ -35,10 +35,10 @@ export class RefreshTokenRepository {
     return result.rows[0];
   }
 
-  async findValidByToken(token: string, userId: string): Promise<RefreshToken | null> {
+  async findByToken(token: string, userId: string): Promise<RefreshToken | null> {
     const result = await this.db.query<RefreshToken>(
       `SELECT * FROM refresh_tokens 
-       WHERE user_id = $1 AND is_revoked = false AND expires_at > NOW()
+       WHERE user_id = $1
        ORDER BY created_at DESC`,
       [userId]
     );
@@ -53,6 +53,16 @@ export class RefreshTokenRepository {
     return null;
   }
 
+  async findValidByToken(token: string, userId: string): Promise<RefreshToken | null> {
+    const matched = await this.findByToken(token, userId);
+
+    if (!matched) {
+      return null;
+    }
+
+    return matched;
+  }
+
   async revokeToken(id: string): Promise<void> {
     await this.db.query(
       `UPDATE refresh_tokens SET is_revoked = true, revoked_at = NOW() WHERE id = $1`,
@@ -65,6 +75,14 @@ export class RefreshTokenRepository {
       `UPDATE refresh_tokens SET is_revoked = true, revoked_at = NOW() 
        WHERE user_id = $1 AND is_revoked = false`,
       [userId]
+    );
+  }
+
+  async revokeTokenFamily(userId: string, tenantId: string): Promise<void> {
+    await this.db.query(
+      `UPDATE refresh_tokens SET is_revoked = true, revoked_at = NOW() 
+       WHERE user_id = $1 AND tenant_id = $2 AND is_revoked = false`,
+      [userId, tenantId]
     );
   }
 

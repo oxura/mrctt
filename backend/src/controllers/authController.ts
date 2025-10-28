@@ -6,6 +6,7 @@ import { AppError } from '../utils/appError';
 import { asyncHandler } from '../middleware/errorHandler';
 import logger from '../utils/logger';
 import { generateCSRFToken } from '../utils/tokens';
+import { env } from '../config/env';
 
 const authService = new AuthService();
 const auditService = new AuditService();
@@ -73,29 +74,31 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
   const result = await authService.login(parsed.data, ipAddress);
 
-  const isProduction = process.env.NODE_ENV === 'production';
-  const cookieOptions = {
+  const isProduction = env.NODE_ENV === 'production';
+  const baseSecureCookieOptions = {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'strict' as const,
+    sameSite: 'lax' as const,
     path: '/',
+    domain: env.COOKIE_DOMAIN ?? undefined,
   };
 
   res.cookie('access_token', result.token, {
-    ...cookieOptions,
+    ...baseSecureCookieOptions,
     maxAge: 15 * 60 * 1000,
   });
 
   res.cookie('refresh_token', result.refreshToken, {
-    ...cookieOptions,
+    ...baseSecureCookieOptions,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
   res.cookie('tenant_id', result.tenant.id, {
     httpOnly: false,
     secure: isProduction,
-    sameSite: 'strict' as const,
+    sameSite: 'lax' as const,
     path: '/',
+    domain: env.COOKIE_DOMAIN ?? undefined,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
@@ -103,8 +106,9 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   res.cookie('csrf_token', csrfToken, {
     httpOnly: false,
     secure: isProduction,
-    sameSite: 'strict' as const,
+    sameSite: 'lax' as const,
     path: '/',
+    domain: env.COOKIE_DOMAIN ?? undefined,
     maxAge: 24 * 60 * 60 * 1000,
   });
 
@@ -159,21 +163,22 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
 
   const result = await authService.refreshAccessToken(refreshToken, req.user.id);
 
-  const isProduction = process.env.NODE_ENV === 'production';
-  const cookieOptions = {
+  const isProduction = env.NODE_ENV === 'production';
+  const baseSecureCookieOptions = {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'strict' as const,
+    sameSite: 'lax' as const,
     path: '/',
+    domain: env.COOKIE_DOMAIN ?? undefined,
   };
 
   res.cookie('access_token', result.token, {
-    ...cookieOptions,
+    ...baseSecureCookieOptions,
     maxAge: 15 * 60 * 1000,
   });
 
   res.cookie('refresh_token', result.refreshToken, {
-    ...cookieOptions,
+    ...baseSecureCookieOptions,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
@@ -190,9 +195,31 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
     await authService.logout(req.user.id);
   }
 
-  res.clearCookie('access_token');
-  res.clearCookie('refresh_token');
-  res.clearCookie('tenant_id');
+  const isProduction = env.NODE_ENV === 'production';
+  const baseSecureCookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'lax' as const,
+    path: '/',
+    domain: env.COOKIE_DOMAIN ?? undefined,
+  };
+
+  res.clearCookie('access_token', baseSecureCookieOptions);
+  res.clearCookie('refresh_token', baseSecureCookieOptions);
+  res.clearCookie('tenant_id', {
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: 'lax' as const,
+    path: '/',
+    domain: env.COOKIE_DOMAIN ?? undefined,
+  });
+  res.clearCookie('csrf_token', {
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: 'lax' as const,
+    path: '/',
+    domain: env.COOKIE_DOMAIN ?? undefined,
+  });
 
   res.status(200).json({
     status: 'success',

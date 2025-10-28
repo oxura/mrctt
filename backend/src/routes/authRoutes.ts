@@ -6,6 +6,7 @@ import {
   authLoginLimiter,
   authPasswordResetLimiter,
   authRegisterLimiter,
+  authRefreshLimiter,
 } from '../middleware/rateLimiter';
 import { csrfProtection } from '../middleware/csrf';
 
@@ -18,7 +19,7 @@ router.post('/password/reset', authPasswordResetLimiter, resetPassword);
 
 router.use(csrfProtection);
 
-router.post('/refresh', authenticate, refresh);
+router.post('/refresh', authRefreshLimiter, authenticate, refresh);
 router.post('/logout', authenticate, logout);
 router.get('/me', authenticate, getCurrentUser);
 

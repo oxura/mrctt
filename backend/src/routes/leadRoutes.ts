@@ -11,7 +11,13 @@ import {
   requirePermissionWithOwnership,
 } from '../middleware/rbac';
 import { auditLog } from '../middleware/audit';
-import { leadsRateLimiter } from '../middleware/rateLimiter';
+import {
+  leadsRateLimiter,
+  leadMutationLimiter,
+  leadCommentLimiter,
+  leadTaskLimiter,
+  leadDeleteLimiter,
+} from '../middleware/rateLimiter';
 import leadsRepository from '../repositories/leadsRepository';
 import tasksRepository from '../repositories/tasksRepository';
 
@@ -28,6 +34,7 @@ router.get(
 
 router.post(
   '/',
+  leadMutationLimiter,
   requirePermission('leads:create'),
   auditLog('lead.create', 'lead'),
   leadsController.create
@@ -48,6 +55,7 @@ router.get(
 
 router.patch(
   '/:id',
+  leadMutationLimiter,
   requirePermissionWithOwnership(
     'leads:update:all',
     'leads:update:own',
@@ -62,6 +70,7 @@ router.patch(
 
 router.patch(
   '/:id/status',
+  leadMutationLimiter,
   requirePermissionWithOwnership(
     'leads:update:all',
     'leads:update:own',
@@ -76,6 +85,7 @@ router.patch(
 
 router.delete(
   '/:id',
+  leadDeleteLimiter,
   requirePermissionWithOwnership(
     'leads:delete:all',
     'leads:delete:own',

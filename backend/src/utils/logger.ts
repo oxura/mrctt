@@ -1,7 +1,55 @@
 import winston from 'winston';
 import { env } from '../config/env';
 
+const SENSITIVE_KEYS = [
+  'password',
+  'password_hash',
+  'token',
+  'refresh_token',
+  'access_token',
+  'authorization',
+  'cookie',
+  'csrf_token',
+  'secret',
+];
+
+const maskEmail = (email: string): string => {
+  const [local, domain] = email.split('@');
+  if (!domain || local.length <= 2) return '*'.repeat(email.length);
+  return `${local[0]}${'*'.repeat(Math.max(local.length - 2, 0))}${local[local.length - 1] || ''}@${domain}`;
+};
+
+const redactSensitiveData = (obj: any): any => {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== 'object') return obj;
+
+  if (Array.isArray(obj)) {
+    return obj.map(redactSensitiveData);
+  }
+
+  const result: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const lowerKey = key.toLowerCase();
+    
+    if (SENSITIVE_KEYS.some((s) => lowerKey.includes(s))) {
+      result[key] = '[REDACTED]';
+    } else if (lowerKey === 'email' && typeof value === 'string' && value.includes('@')) {
+      result[key] = maskEmail(value);
+    } else if (typeof value === 'object') {
+      result[key] = redactSensitiveData(value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+};
+
+const redactionFormat = winston.format((info) => {
+  return redactSensitiveData(info);
+});
+
 const logFormat = winston.format.combine(
+  redactionFormat(),
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   winston.format.errors({ stack: true }),
   winston.format.splat(),

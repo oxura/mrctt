@@ -4,6 +4,7 @@ import { verifyToken } from '../utils/jwt';
 import { pool } from '../db/client';
 import { User } from '../types/models';
 import { PermissionRepository } from '../repositories/permissionRepository';
+import { env } from '../config/env';
 
 const permissionRepo = new PermissionRepository();
 
@@ -12,7 +13,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     let token: string | undefined;
 
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (env.ALLOW_BEARER_TOKENS && authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7);
     } else if (req.cookies?.access_token) {
       token = req.cookies.access_token;
