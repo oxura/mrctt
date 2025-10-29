@@ -184,15 +184,19 @@ Error:
 
 ### Middleware Stack
 
-1. **Rate Limiting** - 100 requests/min per IP
-2. **Helmet** - Security headers
-3. **CORS** - Allow frontend origin
-4. **Body Parser** - JSON with 1MB limit
-5. **Request Logger** - Winston logs all requests
-6. **Authentication** - JWT verification (optional per route)
-7. **Tenant Guard** - Tenant context resolution (optional per route)
-8. **Route Handler** - Business logic
-9. **Error Handler** - Catch all errors, format response
+1. **Request ID** - Assigns unique ID to each request for tracing
+2. **Rate Limiting** - 100 requests/min per IP (granular limits on auth endpoints)
+3. **Helmet** - Security headers (CSP, HSTS, etc.)
+4. **CORS** - Allow frontend origins only (supports multiple via `FRONTEND_ORIGINS` CSV)
+5. **Cookie Parser** - Parse cookies for auth tokens
+6. **Body Parser** - JSON with 1MB limit
+7. **Request Logger** - Winston logs all requests with PII redaction
+8. **CSRF Protection** - Validates X-CSRF-Token on mutations (exempts auth endpoints)
+9. **Authentication** - JWT verification from httpOnly cookies (optional per route)
+10. **Tenant Guard** - Tenant context resolution and validation (optional per route)
+11. **RBAC** - Role-based permission checks (optional per route)
+12. **Route Handler** - Business logic
+13. **Error Handler** - Catch all errors, sanitize, include X-Request-ID in response
 
 ## Frontend Architecture
 
@@ -219,8 +223,11 @@ React Router DOM v6:
 ### API Client
 
 Axios instance with interceptors:
-- Automatically adds `Authorization` header
+- Automatically adds `Authorization` header (from httpOnly cookies)
+- Automatically adds `X-CSRF-Token` header for mutations
 - Automatically adds `X-Tenant-ID` header
+- Handles 401 errors with token refresh (single-flight to prevent stampede)
+- Captures `X-Request-ID` for error tracking
 - Handles errors globally
 
 ### Component Structure
@@ -270,7 +277,32 @@ CSS Modules:
 **Backend:**
 - Node.js 18+
 - PostgreSQL 14+ (or Neon DB)
-- Environment variables set
+- Environment variables set (see `.env.example`)
+
+**Key Environment Variables:**
+```bash
+# Database
+DATABASE_URL=postgresql://user:pass@host:5432/db
+
+# JWT & Auth
+JWT_SECRET=minimum-32-characters-secret
+JWT_EXPIRES_IN=15m
+REFRESH_TOKEN_EXPIRES_IN=7d
+ALLOW_BEARER_TOKENS=false  # Only for non-browser clients
+
+# CORS & Origins
+FRONTEND_URL=http://localhost:3000
+FRONTEND_ORIGINS=https://staging.myapp.com,https://myapp.com  # CSV for multiple
+API_URL=http://localhost:5000  # For CSP only, NOT in CORS allowlist
+
+# Cookies
+COOKIE_DOMAIN=  # Empty for host-only (recommended), or .yourdomain.com for subdomains
+
+# Security
+CSP_REPORT_URI=https://report.example.com
+LOG_LEVEL=info
+NODE_ENV=production
+```
 
 **Frontend:**
 - Static file hosting (Vercel, Netlify, S3 + CloudFront)

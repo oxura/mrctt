@@ -58,16 +58,24 @@ app.use((req, res, next) => {
   next();
 });
 
-const normalizedFrontendOrigin = env.FRONTEND_URL ? env.FRONTEND_URL.replace(/\/$/, '') : null;
-const normalizedApiOrigin = env.API_URL ? env.API_URL.replace(/\/$/, '') : null;
+const rawFrontendOrigins = [env.FRONTEND_URL, env.FRONTEND_ORIGINS]
+  .filter(Boolean)
+  .flatMap((value) =>
+    (value as string).split(',').map((origin) => origin.trim()).filter((origin) => origin.length > 0)
+  );
 
-const connectSources = ["'self'"];
-if (normalizedFrontendOrigin) {
-  connectSources.push(normalizedFrontendOrigin);
-}
-if (normalizedApiOrigin) {
-  connectSources.push(normalizedApiOrigin);
-}
+const normalizeOrigin = (origin: string): string => {
+  try {
+    const url = new URL(origin);
+    return `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}`;
+  } catch {
+    return origin.replace(/\/$/, '');
+  }
+};
+
+const frontendOrigins = Array.from(new Set(rawFrontendOrigins.map(normalizeOrigin)));
+
+const connectSources = ["'self'", ...frontendOrigins];
 if (env.COOKIE_DOMAIN) {
   const domain = env.COOKIE_DOMAIN.replace(/^\./, '');
   connectSources.push(`https://*.${domain}`);
@@ -90,19 +98,6 @@ app.use(
     },
   })
 );
-const normalizeOrigin = (origin: string): string => {
-  try {
-    const url = new URL(origin);
-    return `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}`;
-  } catch {
-    return origin.replace(/\/$/, '');
-  }
-};
-
-const allowedOrigins = [env.FRONTEND_URL].filter(Boolean).map(normalizeOrigin);
-if (env.API_URL) {
-  allowedOrigins.push(normalizeOrigin(env.API_URL));
-}
 
 app.use(
   cors({
@@ -112,7 +107,7 @@ app.use(
       }
       
       const normalized = normalizeOrigin(origin);
-      if (allowedOrigins.includes(normalized)) {
+      if (frontendOrigins.includes(normalized)) {
         callback(null, true);
       } else {
         const requestId = randomBytes(8).toString('hex');
@@ -120,7 +115,7 @@ app.use(
           requestId,
           origin,
           normalizedOrigin: normalized,
-          allowedOrigins,
+          allowedOrigins: frontendOrigins,
         });
         callback(null, false);
       }

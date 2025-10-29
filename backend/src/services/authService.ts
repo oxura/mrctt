@@ -275,7 +275,7 @@ export class AuthService {
           logger.warn('Failed to record audit event for refresh token reuse', { error: err });
         });
 
-      throw new AppError('Token has been revoked for security reasons', 401);
+      throw new AppError('Invalid or expired refresh token', 401);
     }
 
     if (storedToken.expires_at <= new Date()) {

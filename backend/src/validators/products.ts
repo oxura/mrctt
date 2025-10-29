@@ -31,7 +31,7 @@ export const createProductSchema = z.object({
     .nonnegative('Price must be greater than or equal to 0')
     .optional(),
   status: productStatusEnum.optional(),
-});
+}).strict();
 
 export const updateProductSchema = createProductSchema.partial().extend({
   name: z
@@ -46,8 +46,8 @@ export const updateProductSchema = createProductSchema.partial().extend({
     .nonnegative('Price must be greater than or equal to 0')
     .nullable()
     .optional(),
-});
+}).strict();
 
 export const updateProductStatusSchema = z.object({
   status: productStatusEnum,
-});
+}).strict();
