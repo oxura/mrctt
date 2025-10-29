@@ -23,6 +23,10 @@ const SENSITIVE_FIELDS = [
   'cvv',
 ];
 
+const hashValue = (value: string): string => {
+  return crypto.createHash('sha256').update(value).digest('hex').slice(0, 16);
+};
+
 const sanitizeValue = (value: any, key: string): any => {
   if (typeof value === 'object' && value !== null) {
     return sanitizeBody(value);
@@ -34,9 +38,11 @@ const sanitizeValue = (value: any, key: string): any => {
       return '[REDACTED]';
     }
     
-    if (env.NODE_ENV === 'production' && lowerKey === 'email' && value.includes('@')) {
+    if (lowerKey === 'email' && value.includes('@')) {
       const [local, domain] = value.split('@');
-      return `${local.substring(0, 2)}***@${domain}`;
+      return env.NODE_ENV === 'production' 
+        ? `${hashValue(value)}@masked` 
+        : `${local.substring(0, 2)}***@${domain}`;
     }
   }
   
@@ -74,8 +80,9 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
   res.on('finish', () => {
     const duration = Date.now() - start;
     const userAgent = req.get('user-agent') ?? '';
-    const fingerprintSource = `${req.ip ?? 'unknown'}|${userAgent}`;
-    const clientFingerprint = crypto.createHash('sha256').update(fingerprintSource).digest('hex').slice(0, 16);
+    const ip = req.ip ?? 'unknown';
+    const fingerprintSource = `${ip}|${userAgent}`;
+    const clientFingerprint = hashValue(fingerprintSource);
 
     const logData: any = {
       requestId: req.requestId,
@@ -86,6 +93,8 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
       tenantId: req.tenantId,
       userId: req.user?.id,
       clientFingerprint,
+      ipHash: hashValue(ip),
+      userAgentHash: hashValue(userAgent),
     };
 
     if (env.NODE_ENV !== 'production' && req.body && Object.keys(req.body).length > 0) {

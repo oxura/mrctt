@@ -25,10 +25,6 @@ export const tenantGuard = async (req: Request, res: Response, next: NextFunctio
   try {
     const incomingIdentifier = resolveTenantIdentifier(req);
 
-    if (!req.user && !incomingIdentifier) {
-      throw new AppError('Tenant context is required', 400);
-    }
-
     if (req.user) {
       if (req.user.role === 'platform_owner') {
         if (!incomingIdentifier) {
@@ -58,30 +54,18 @@ export const tenantGuard = async (req: Request, res: Response, next: NextFunctio
           throw new AppError('User has no associated tenant', 403);
         }
 
-        if (incomingIdentifier) {
+        if (incomingIdentifier && incomingIdentifier !== userTenantId) {
           const tenantCheckResult = await pool.query(
             'SELECT id FROM tenants WHERE (id::text = $1 OR slug = $1) AND is_active = true',
             [incomingIdentifier]
           );
 
-          if (tenantCheckResult.rows.length === 0) {
-            logger.warn('Tenant access denied: not found', {
+          if (tenantCheckResult.rows.length === 0 || tenantCheckResult.rows[0].id !== userTenantId) {
+            logger.warn('Tenant access denied: header spoofing attempt', {
               requestId: req.requestId,
               userId: req.user.id,
               userTenantId,
-              identifier: incomingIdentifier,
-            });
-            throw new AppError('Tenant not found or inactive', 404);
-          }
-
-          const resolvedTenantId = tenantCheckResult.rows[0].id;
-
-          if (resolvedTenantId !== userTenantId) {
-            logger.warn('Tenant access denied: cross-tenant attempt', {
-              requestId: req.requestId,
-              userId: req.user.id,
-              userTenantId,
-              attemptedTenantId: resolvedTenantId,
+              attemptedIdentifier: incomingIdentifier,
             });
             throw new AppError('Access denied: cannot access other tenant resources', 403);
           }
@@ -113,11 +97,15 @@ export const tenantGuard = async (req: Request, res: Response, next: NextFunctio
       const tenant = tenantResult.rows[0];
       req.tenantId = tenant.id;
       res.locals.tenant = tenant;
+    } else {
+      throw new AppError('Tenant context is required', 400);
     }
 
     if (!req.tenantId) {
       throw new AppError('Unable to resolve tenant context', 400);
     }
+
+    await pool.query('SELECT set_config($1, $2, true)', ['app.tenant_id', req.tenantId]);
 
     next();
   } catch (error) {
