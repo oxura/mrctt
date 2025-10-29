@@ -193,16 +193,32 @@ const Groups: React.FC = () => {
 
   const renderCapacityProgress = (group: Group) => {
     if (!group.max_capacity) {
-      return <span className={groupStyles.noLimit}>Без лимита</span>;
+      return (
+        <span className={groupStyles.noLimit}>
+          Записано {group.current_capacity} человек, без лимита
+        </span>
+      );
     }
 
-    const percentage = (group.current_capacity / group.max_capacity) * 100;
+    const occupied = group.current_capacity;
+    const total = group.max_capacity;
+    const percentage = (occupied / total) * 100;
+    const clampedPercentage = Math.min(Math.round(percentage), 100);
     const isAlmostFull = percentage >= 80 && percentage < 100;
     const isFull = percentage >= 100;
 
     return (
-      <div className={groupStyles.capacityContainer}>
-        <div className={groupStyles.capacityBar}>
+      <div
+        className={groupStyles.capacityContainer}
+        aria-label={`Занято ${occupied} из ${total} мест`}
+      >
+        <div
+          className={groupStyles.capacityBar}
+          role="progressbar"
+          aria-valuenow={clampedPercentage}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
           <div
             className={`${groupStyles.capacityFill} ${
               isFull ? groupStyles.capacityFull : isAlmostFull ? groupStyles.capacityAlmostFull : ''
@@ -211,7 +227,7 @@ const Groups: React.FC = () => {
           />
         </div>
         <span className={groupStyles.capacityText}>
-          {group.current_capacity} / {group.max_capacity}
+          Занято {occupied} из {total} мест
         </span>
       </div>
     );
