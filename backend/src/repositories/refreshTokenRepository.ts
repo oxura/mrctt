@@ -35,12 +35,11 @@ export class RefreshTokenRepository {
     return result.rows[0];
   }
 
-  async findByToken(token: string, userId: string): Promise<RefreshToken | null> {
+  async findByToken(token: string): Promise<RefreshToken | null> {
     const result = await this.db.query<RefreshToken>(
-      `SELECT * FROM refresh_tokens 
-       WHERE user_id = $1
-       ORDER BY created_at DESC`,
-      [userId]
+      `SELECT * FROM refresh_tokens
+       WHERE expires_at > NOW() - INTERVAL '1 day'
+       ORDER BY created_at DESC`
     );
 
     for (const row of result.rows) {
@@ -51,16 +50,6 @@ export class RefreshTokenRepository {
     }
 
     return null;
-  }
-
-  async findValidByToken(token: string, userId: string): Promise<RefreshToken | null> {
-    const matched = await this.findByToken(token, userId);
-
-    if (!matched) {
-      return null;
-    }
-
-    return matched;
   }
 
   async revokeToken(id: string): Promise<void> {

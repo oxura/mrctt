@@ -3,23 +3,65 @@ import crypto from 'crypto';
 import logger from '../utils/logger';
 import { env } from '../config/env';
 
-const sanitizeBody = (body: any): any => {
-  if (!body || typeof body !== 'object') return {};
+const SENSITIVE_FIELDS = [
+  'password',
+  'password_hash',
+  'token',
+  'refresh_token',
+  'access_token',
+  'csrf_token',
+  'secret',
+  'api_key',
+  'apiKey',
+  'authorization',
+  'newPassword',
+  'oldPassword',
+  'currentPassword',
+  'passwordConfirm',
+  'ssn',
+  'creditCard',
+  'cvv',
+];
+
+const sanitizeValue = (value: any, key: string): any => {
+  if (typeof value === 'object' && value !== null) {
+    return sanitizeBody(value);
+  }
   
-  const sensitiveFields = ['password', 'token', 'refresh_token', 'access_token', 'csrf_token'];
-  const sanitized = { ...body };
-  
-  for (const field of sensitiveFields) {
-    if (field in sanitized) {
-      sanitized[field] = '[REDACTED]';
+  if (typeof value === 'string') {
+    const lowerKey = key.toLowerCase();
+    if (SENSITIVE_FIELDS.some(field => lowerKey.includes(field))) {
+      return '[REDACTED]';
+    }
+    
+    if (env.NODE_ENV === 'production' && lowerKey === 'email' && value.includes('@')) {
+      const [local, domain] = value.split('@');
+      return `${local.substring(0, 2)}***@${domain}`;
     }
   }
   
-  if (env.NODE_ENV === 'production' && 'email' in sanitized) {
-    const email = sanitized.email as string;
-    if (email && email.includes('@')) {
-      const [local, domain] = email.split('@');
-      sanitized.email = `${local.substring(0, 2)}***@${domain}`;
+  return value;
+};
+
+const sanitizeBody = (body: any): any => {
+  if (!body || typeof body !== 'object') return {};
+  
+  const sanitized: any = Array.isArray(body) ? [] : {};
+  
+  for (const [key, value] of Object.entries(body)) {
+    sanitized[key] = sanitizeValue(value, key);
+  }
+  
+  return sanitized;
+};
+
+const sanitizeHeaders = (headers: any): any => {
+  const sanitized = { ...headers };
+  const sensitiveHeaderKeys = ['authorization', 'cookie', 'x-csrf-token', 'x-api-key'];
+  
+  for (const key of sensitiveHeaderKeys) {
+    if (key in sanitized) {
+      sanitized[key] = '[REDACTED]';
     }
   }
   

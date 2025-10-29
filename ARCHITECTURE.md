@@ -36,10 +36,21 @@ The `tenantGuard` middleware:
 ### Security Considerations
 
 **Preventing cross-tenant data leaks:**
-- Repository pattern enforces `tenant_id` filters
+- **Database-level Row-Level Security (RLS)**: PostgreSQL policies enforce `tenant_id` isolation
+  - All tenant-scoped tables have RLS enabled
+  - Policies use `app.tenant_id` session variable set per request
+  - Double defense: Both application and database enforce isolation
+- Repository pattern enforces `tenant_id` filters in WHERE clauses
 - All queries use parameterized statements
 - No direct SQL from user input
 - Automated tests verify tenant isolation
+
+**Database-Level Tenant Isolation:**
+Migration `00009_enable_rls.sql` enables Row-Level Security on:
+- users, products, groups, leads, lead_comments, lead_activities, tasks, forms, form_submissions
+- Each connection sets `SET LOCAL app.tenant_id = '<uuid>'` at transaction start
+- Policies return rows WHERE `tenant_id::text = current_setting('app.tenant_id', true)`
+- If session variable not set, queries return no rows (fail-safe)
 
 **Role-Based Access Control:**
 - `owner` - Full access within tenant, can manage billing

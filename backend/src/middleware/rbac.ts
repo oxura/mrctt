@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/appError';
 import { PermissionRepository } from '../repositories/permissionRepository';
+import { pool } from '../db/client';
 
 const permissionRepo = new PermissionRepository();
 
@@ -179,4 +180,26 @@ export const requirePermissionWithOwnership = (
       next(error);
     }
   };
+};
+
+export const getLeadOwnerId = async (tenantId: string, leadId: string): Promise<string | null> => {
+  const result = await pool.query<{ assigned_to: string | null }>(
+    `SELECT assigned_to FROM leads WHERE id = $1 AND tenant_id = $2`,
+    [leadId, tenantId]
+  );
+  if (result.rows.length === 0) {
+    return null;
+  }
+  return result.rows[0].assigned_to ?? null;
+};
+
+export const getTaskOwnerId = async (tenantId: string, taskId: string): Promise<string | null> => {
+  const result = await pool.query<{ assigned_to: string | null }>(
+    `SELECT assigned_to FROM tasks WHERE id = $1 AND tenant_id = $2`,
+    [taskId, tenantId]
+  );
+  if (result.rows.length === 0) {
+    return null;
+  }
+  return result.rows[0].assigned_to ?? null;
 };
