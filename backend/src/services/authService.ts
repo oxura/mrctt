@@ -1,8 +1,10 @@
+import crypto from 'crypto';
 import { AppError } from '../utils/appError';
 import { hashPassword, verifyPassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { generateRefreshToken } from '../utils/tokens';
 import { withTransaction } from '../db/client';
+import { revokeUserTokens } from '../middleware/auth';
 import { UserRepository } from '../repositories/userRepository';
 import { TenantRepository } from '../repositories/tenantRepository';
 import { RefreshTokenRepository } from '../repositories/refreshTokenRepository';
@@ -95,6 +97,7 @@ export class AuthService {
         userId: user.id,
         tenantId: tenant.id,
         role: user.role,
+        tokenVersion: user.token_version,
       });
 
       const { password_hash: passwordHashColumn, ...userWithoutPassword } = user;
@@ -190,9 +193,11 @@ export class AuthService {
       userId: user.id,
       tenantId: tenant.id,
       role: user.role,
+      tokenVersion: user.token_version,
     });
 
     const refreshToken = generateRefreshToken();
+    const tokenFamilyId = crypto.randomUUID();
     const refreshTokenDuration = parseDuration(env.REFRESH_TOKEN_EXPIRES_IN || '7d');
     const refreshExpiresAt = new Date(Date.now() + refreshTokenDuration);
 
@@ -201,6 +206,7 @@ export class AuthService {
       tenant_id: tenant.id,
       token: refreshToken,
       expires_at: refreshExpiresAt,
+      token_family_id: tokenFamilyId,
     });
 
     const { password_hash: passwordHash2, ...userWithoutPassword } = user;
@@ -227,55 +233,65 @@ export class AuthService {
     return userWithoutPassword;
   }
 
-  async rotateRefreshToken(refreshToken: string) {
-    const storedToken = await this.refreshTokenRepo.findByToken(refreshToken);
+  async refreshAccessToken(refreshToken: string, userId: string, tenantId: string) {
+    const storedToken = await this.refreshTokenRepo.findByToken(refreshToken, userId, tenantId);
 
     if (!storedToken) {
-      logger.warn('Refresh token not found', { refreshTokenPreview: refreshToken.slice(0, 8) });
+      logger.warn('Refresh token not found', {
+        userId,
+        tenantId,
+        refreshTokenPreview: refreshToken.slice(0, 8),
+      });
       throw new AppError('Invalid or expired refresh token', 401);
     }
 
     if (storedToken.is_revoked) {
-      await this.refreshTokenRepo.revokeTokenFamily(storedToken.user_id, storedToken.tenant_id);
+      if (storedToken.token_family_id) {
+        await this.refreshTokenRepo.revokeTokenFamily(storedToken.token_family_id, tenantId);
+      } else {
+        await this.refreshTokenRepo.revokeAllUserTokens(userId, tenantId);
+      }
+
       logger.warn('Revoked refresh token reuse detected - revoking token family', {
-        userId: storedToken.user_id,
-        tenantId: storedToken.tenant_id,
+        userId,
+        tenantId,
         tokenId: storedToken.id,
+        tokenFamilyId: storedToken.token_family_id,
       });
 
-      this.auditService.record({
-        tenantId: storedToken.tenant_id,
-        userId: storedToken.user_id,
-        action: 'auth.refresh.reuse_detected',
-        resourceType: 'auth_session',
-        resourceId: storedToken.id,
-        details: {
-          tokenId: storedToken.id,
-        },
-      }).catch((err) => {
-        logger.warn('Failed to record audit event for refresh token reuse', { error: err });
-      });
+      this.auditService
+        .record({
+          tenantId,
+          userId,
+          action: 'auth.refresh.reuse_detected',
+          resourceType: 'auth_session',
+          resourceId: storedToken.id,
+          details: {
+            tokenId: storedToken.id,
+            tokenFamilyId: storedToken.token_family_id,
+          },
+        })
+        .catch((err) => {
+          logger.warn('Failed to record audit event for refresh token reuse', { error: err });
+        });
 
       throw new AppError('Token has been revoked for security reasons', 401);
     }
 
     if (storedToken.expires_at <= new Date()) {
       await this.refreshTokenRepo.revokeToken(storedToken.id);
-      logger.warn('Expired refresh token attempt', {
-        userId: storedToken.user_id,
-        tenantId: storedToken.tenant_id,
-      });
+      logger.warn('Expired refresh token attempt', { userId, tenantId });
       throw new AppError('Refresh token has expired', 401);
     }
 
-    await this.refreshTokenRepo.revokeToken(storedToken.id);
+    await this.refreshTokenRepo.markTokenUsed(storedToken.id);
 
-    const user = await this.userRepo.findById(storedToken.user_id);
+    const user = await this.userRepo.findById(userId);
     if (!user || !user.is_active) {
       throw new AppError('User not found or inactive', 401);
     }
 
-    const tenant = await this.tenantRepo.findById(storedToken.tenant_id);
+    const tenant = await this.tenantRepo.findById(tenantId);
     if (!tenant || !tenant.is_active) {
       throw new AppError('Tenant not found or inactive', 401);
     }
@@ -284,18 +300,37 @@ export class AuthService {
       userId: user.id,
       tenantId: tenant.id,
       role: user.role,
+      tokenVersion: user.token_version,
     });
 
     const newRefreshToken = generateRefreshToken();
     const refreshTokenDuration = parseDuration(env.REFRESH_TOKEN_EXPIRES_IN || '7d');
     const refreshExpiresAt = new Date(Date.now() + refreshTokenDuration);
+    const tokenFamilyId = storedToken.token_family_id ?? crypto.randomUUID();
 
-    await this.refreshTokenRepo.create({
+    await this.refreshTokenRepo.revokeAndCreateNew(storedToken.id, {
       user_id: user.id,
       tenant_id: tenant.id,
       token: newRefreshToken,
       expires_at: refreshExpiresAt,
+      token_family_id: tokenFamilyId,
     });
+
+    this.auditService
+      .record({
+        tenantId: tenant.id,
+        userId: user.id,
+        action: 'auth.refresh.success',
+        resourceType: 'auth_session',
+        resourceId: storedToken.id,
+        details: {
+          oldTokenId: storedToken.id,
+          tokenFamilyId,
+        },
+      })
+      .catch((err) => {
+        logger.warn('Failed to record audit event for refresh', { error: err });
+      });
 
     const { password_hash: passwordHashColumn, ...userWithoutPassword } = user;
     void passwordHashColumn;
@@ -308,7 +343,10 @@ export class AuthService {
     };
   }
 
-  async logout(userId: string) {
-    await this.refreshTokenRepo.revokeAllUserTokens(userId);
+  async logout(userId: string, tenantId?: string | null) {
+    if (tenantId) {
+      await this.refreshTokenRepo.revokeAllUserTokens(userId, tenantId);
+    }
+    await revokeUserTokens(userId);
   }
 }

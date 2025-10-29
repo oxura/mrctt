@@ -7,6 +7,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 import logger from '../utils/logger';
 import { generateCSRFToken } from '../utils/tokens';
 import { env } from '../config/env';
+import { decodeToken } from '../utils/jwt';
 
 const authService = new AuthService();
 const auditService = new AuditService();
@@ -152,12 +153,34 @@ export const getCurrentUser = asyncHandler(async (req: Request, res: Response) =
 
 export const refreshSession = asyncHandler(async (req: Request, res: Response) => {
   const refreshToken = req.cookies?.refresh_token;
+  const tenantId = req.cookies?.tenant_id;
 
   if (!refreshToken) {
     throw new AppError('Refresh token not found', 401);
   }
 
-  const result = await authService.rotateRefreshToken(refreshToken);
+  if (!tenantId) {
+    throw new AppError('Tenant context missing', 401);
+  }
+
+  let userId = req.user?.id;
+  if (!userId) {
+    const accessToken = req.cookies?.access_token;
+    if (accessToken) {
+      try {
+        const decoded = decodeToken(accessToken);
+        userId = decoded?.userId;
+      } catch (error) {
+        logger.debug('Failed to decode access token during refresh');
+      }
+    }
+  }
+
+  if (!userId) {
+    throw new AppError('User context missing', 401);
+  }
+
+  const result = await authService.refreshAccessToken(refreshToken, userId, tenantId);
 
   const isProduction = env.NODE_ENV === 'production';
   const baseSecureCookieOptions = {
@@ -188,7 +211,8 @@ export const refreshSession = asyncHandler(async (req: Request, res: Response) =
 
 export const logout = asyncHandler(async (req: Request, res: Response) => {
   if (req.user) {
-    await authService.logout(req.user.id);
+    const tenantId = req.user.tenant_id || req.cookies?.tenant_id;
+    await authService.logout(req.user.id, tenantId);
   }
 
   const isProduction = env.NODE_ENV === 'production';

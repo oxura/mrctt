@@ -3,9 +3,7 @@ import { AppError } from '../utils/appError';
 import { verifyCSRFToken } from '../utils/tokens';
 
 const CSRF_EXEMPT_PATHS = new Set([
-  '/api/v1/auth/login',
   '/api/v1/auth/register',
-  '/api/v1/auth/refresh',
   '/api/v1/health',
 ]);
 

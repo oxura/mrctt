@@ -1,14 +1,14 @@
 import { pool } from './client';
 import '../config/env';
+import logger from '../utils/logger';
 
 async function testConnection() {
   try {
-    console.log('Testing database connection...');
+    logger.info('Testing database connection');
     const result = await pool.query('SELECT NOW()');
-    console.log('✅ Database connection successful!');
-    console.log('Current time:', result.rows[0].now);
+    logger.info('Database connection successful', { currentTime: result.rows[0].now });
 
-    console.log('\nChecking if roles table exists...');
+    logger.info('Checking if roles table exists');
     const checkRoles = await pool.query(
       `SELECT EXISTS (
         SELECT FROM information_schema.tables 
@@ -17,14 +17,13 @@ async function testConnection() {
     );
 
     if (checkRoles.rows[0].exists) {
-      console.log('✅ Roles table exists');
       const rolesCount = await pool.query('SELECT COUNT(*) FROM roles');
-      console.log(`   Found ${rolesCount.rows[0].count} roles`);
+      logger.info('Roles table found', { count: rolesCount.rows[0].count });
     } else {
-      console.log('❌ Roles table does not exist. Run migrations first.');
+      logger.warn('Roles table does not exist. Run migrations first.');
     }
 
-    console.log('\nChecking if permissions table exists...');
+    logger.info('Checking if permissions table exists');
     const checkPermissions = await pool.query(
       `SELECT EXISTS (
         SELECT FROM information_schema.tables 
@@ -33,16 +32,15 @@ async function testConnection() {
     );
 
     if (checkPermissions.rows[0].exists) {
-      console.log('✅ Permissions table exists');
       const permissionsCount = await pool.query('SELECT COUNT(*) FROM permissions');
-      console.log(`   Found ${permissionsCount.rows[0].count} permissions`);
+      logger.info('Permissions table found', { count: permissionsCount.rows[0].count });
     } else {
-      console.log('❌ Permissions table does not exist. Run migrations first.');
+      logger.warn('Permissions table does not exist. Run migrations first.');
     }
 
     await pool.end();
   } catch (error) {
-    console.error('❌ Database connection failed:', error);
+    logger.error('Database connection failed', { error });
     process.exit(1);
   }
 }

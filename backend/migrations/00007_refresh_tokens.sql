@@ -1,6 +1,8 @@
 -- Migration: 00007_refresh_tokens.sql
 -- Add refresh tokens table for secure token rotation
 
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS refresh_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -45,3 +47,5 @@ CREATE TABLE IF NOT EXISTS account_lockouts (
 
 CREATE INDEX idx_account_lockouts_email_tenant ON account_lockouts(email, tenant_slug);
 CREATE INDEX idx_account_lockouts_locked_until ON account_lockouts(locked_until);
+
+COMMIT;

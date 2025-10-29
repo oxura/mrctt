@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/appError';
 import { verifyToken } from '../utils/jwt';
-import { pool } from '../db/client';
+import { pool, PoolClientLike } from '../db/client';
 import { User } from '../types/models';
 import { PermissionRepository } from '../repositories/permissionRepository';
 import { env } from '../config/env';
@@ -44,7 +44,19 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       throw new AppError('User not found or inactive', 401);
     }
 
-    req.user = result.rows[0];
+    const user = result.rows[0];
+
+    if (decoded.tokenVersion !== undefined && user.token_version !== decoded.tokenVersion) {
+      logger.warn('Token version mismatch - token revoked', {
+        userId: user.id,
+        jti: decoded.jti,
+        expectedVersion: user.token_version,
+        tokenVersion: decoded.tokenVersion,
+      });
+      throw new AppError('Token has been revoked', 401);
+    }
+
+    req.user = user;
 
     const permissions = await permissionRepo.getPermissionsByUserId(req.user.id);
     req.permissions = permissions.map((permission) => permission.name);
@@ -67,4 +79,14 @@ export const requireRole = (...allowedRoles: string[]) => {
 
     next();
   };
+};
+
+export const revokeUserTokens = async (
+  userId: string,
+  client: PoolClientLike = pool
+): Promise<void> => {
+  await client.query(
+    'UPDATE users SET token_version = token_version + 1 WHERE id = $1',
+    [userId]
+  );
 };
