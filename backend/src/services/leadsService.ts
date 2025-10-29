@@ -67,6 +67,15 @@ export class LeadsService {
     return leadsRepository.updateStatus(tenantId, leadId, status, userId);
   }
 
+  async batchUpdateStatus(
+    tenantId: string,
+    leadIds: string[],
+    status: string,
+    userId?: string
+  ): Promise<{ updated: number; failed: number }> {
+    return leadsRepository.batchUpdateStatus(tenantId, leadIds, status, userId);
+  }
+
   async deleteLead(tenantId: string, leadId: string, userId?: string): Promise<void> {
     const lead = await leadsRepository.findById(tenantId, leadId);
 

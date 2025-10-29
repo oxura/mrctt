@@ -38,6 +38,12 @@ const Register: React.FC = () => {
       return;
     }
 
+    const password = form.password;
+    if (password.length < 10 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      setError('Пароль должен содержать минимум 10 символов, включая заглавную и строчную буквы, цифру и специальный символ');
+      return;
+    }
+
     setError(null);
     setLoading(true);
 
@@ -86,10 +92,13 @@ const Register: React.FC = () => {
               name="password"
               value={form.password}
               onChange={handleChange}
-              placeholder="Минимум 8 символов"
+              placeholder="Минимум 10 символов: A-Z, a-z, 0-9, спецсимвол"
               required
-              minLength={8}
+              minLength={10}
             />
+            <small style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem', display: 'block' }}>
+              Минимум 10 символов, включая заглавные, строчные буквы, цифру и спецсимвол
+            </small>
           </label>
 
           <label>

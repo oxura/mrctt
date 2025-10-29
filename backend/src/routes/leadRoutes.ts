@@ -101,6 +101,15 @@ router.delete(
   leadsController.delete
 );
 
+router.patch(
+  '/batch/status',
+  leadsMutationsLimiter,
+  leadMutationLimiter,
+  requirePermission('leads:update:all'),
+  auditLog('lead.batch_status', 'lead'),
+  leadsController.batchUpdateStatus
+);
+
 router.get(
   '/:leadId/comments',
   requirePermissionWithOwnership(

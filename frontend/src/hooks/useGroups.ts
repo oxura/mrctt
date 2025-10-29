@@ -48,13 +48,25 @@ export const useGroups = (initialFilters: GroupsFilter = {}) => {
       setLoading(true);
       const params = new URLSearchParams();
 
-      Object.entries(filters).forEach(([key, value]) => {
+      const { product_id, ...restFilters } = filters;
+
+      Object.entries(restFilters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
           params.append(key, String(value));
         }
       });
 
-      const response = await api.get(`/api/v1/groups?${params.toString()}`);
+      const queryString = params.toString();
+
+      let url = '/api/v1/groups';
+      if (product_id) {
+        url = `/api/v1/products/${product_id}/groups`;
+      }
+      if (queryString) {
+        url += `?${queryString}`;
+      }
+
+      const response = await api.get(url);
       setData(response.data.data);
       setError(null);
     } catch (err: any) {
@@ -70,7 +82,12 @@ export const useGroups = (initialFilters: GroupsFilter = {}) => {
 
   const createGroup = async (groupData: CreateGroupDto): Promise<Group> => {
     try {
-      const response = await api.post('/api/v1/groups', groupData);
+      if (!groupData.product_id) {
+        throw new Error('Не выбран продукт для группы');
+      }
+
+      const { product_id, ...payload } = groupData;
+      const response = await api.post(`/api/v1/products/${product_id}/groups`, payload);
       await fetchGroups();
       return response.data.data;
     } catch (err: any) {
@@ -80,7 +97,7 @@ export const useGroups = (initialFilters: GroupsFilter = {}) => {
 
   const updateGroup = async (groupId: string, groupData: UpdateGroupDto): Promise<Group> => {
     try {
-      const response = await api.put(`/api/v1/groups/${groupId}`, groupData);
+      const response = await api.put(`/api/v1/product-groups/${groupId}`, groupData);
       await fetchGroups();
       return response.data.data;
     } catch (err: any) {
@@ -90,7 +107,7 @@ export const useGroups = (initialFilters: GroupsFilter = {}) => {
 
   const deleteGroup = async (groupId: string): Promise<void> => {
     try {
-      await api.delete(`/api/v1/groups/${groupId}`);
+      await api.delete(`/api/v1/product-groups/${groupId}`);
       await fetchGroups();
     } catch (err: any) {
       throw new Error(err.response?.data?.message || 'Ошибка удаления группы');
@@ -138,7 +155,7 @@ export const useGroup = (groupId: string) => {
     }
 
     try {
-      const response = await api.put(`/api/v1/groups/${groupId}`, groupData);
+      const response = await api.put(`/api/v1/product-groups/${groupId}`, groupData);
       await fetchGroup();
       return response.data.data;
     } catch (err: any) {

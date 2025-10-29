@@ -143,6 +143,40 @@ export class LeadsController {
       next(error);
     }
   }
+
+  async batchUpdateStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const tenantId = req.tenantId!;
+      const userId = req.user?.id;
+
+      const { lead_ids, status } = req.body;
+
+      if (!Array.isArray(lead_ids) || lead_ids.length === 0) {
+        throw new AppError('lead_ids must be a non-empty array', 400);
+      }
+
+      if (!status || typeof status !== 'string') {
+        throw new AppError('status is required', 400);
+      }
+
+      if (lead_ids.length > 100) {
+        throw new AppError('Cannot update more than 100 leads at once', 400);
+      }
+
+      const results = await leadsService.batchUpdateStatus(tenantId, lead_ids, status, userId);
+
+      res.status(200).json({
+        status: 'success',
+        data: {
+          updated: results.updated,
+          failed: results.failed,
+          message: `Updated ${results.updated} leads, ${results.failed} failed`,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new LeadsController();

@@ -215,6 +215,26 @@ export class ProductsRepository {
     return result.rows[0];
   }
 
+  async batchUpdateStatus(
+    tenantId: string,
+    productIds: string[],
+    status: 'active' | 'archived'
+  ): Promise<{ updated: number; failed: number }> {
+    let updated = 0;
+    let failed = 0;
+
+    for (const productId of productIds) {
+      try {
+        await this.updateStatus(tenantId, productId, status);
+        updated++;
+      } catch (error) {
+        failed++;
+      }
+    }
+
+    return { updated, failed };
+  }
+
   async delete(tenantId: string, productId: string): Promise<void> {
     const query = `
       DELETE FROM products

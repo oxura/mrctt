@@ -1,4 +1,21 @@
 import rateLimit from 'express-rate-limit';
+import type { Request } from 'express';
+
+const resolveTenantScope = (req: Request): string => {
+  const tenantHeader = req.headers['x-tenant-id'];
+  const tenantFromHeader = Array.isArray(tenantHeader) ? tenantHeader[0] : tenantHeader;
+  return (
+    req.tenantId ||
+    req.cookies?.tenant_id ||
+    (typeof tenantFromHeader === 'string' ? tenantFromHeader : null) ||
+    'unknown'
+  );
+};
+
+const resolveUserScope = (req: Request): string => {
+  const cookieUserId = req.cookies?.user_id;
+  return req.user?.id || (typeof cookieUserId === 'string' ? cookieUserId : null) || req.ip || 'anonymous';
+};
 
 export const loginLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -101,27 +118,40 @@ const createTenantUserLimiter = (prefix: string, limit: number, windowMs = 60 * 
     windowMs,
     limit,
     keyGenerator: (req) => {
-      const tenantId = req.tenantId || 'unknown';
-      const userId = req.user?.id || req.ip || 'anonymous';
+      const tenantId = resolveTenantScope(req);
+      const userId = resolveUserScope(req);
       return `${prefix}:${tenantId}:${userId}`;
     },
     message: 'Too many requests from this tenant/user, please try again later.',
     standardHeaders: true,
     legacyHeaders: false,
+    handler: (req, res) => {
+      res.status(429).json({
+        status: 'error',
+        message: 'Too many requests from this tenant/user, please try again later.',
+        requestId: req.requestId,
+      });
+    },
   });
 
 export const leadsRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 100,
   keyGenerator: (req) => {
-    const tenantId = req.tenantId || 'unknown';
-    const userId = req.user?.id || 'anonymous';
-    const ip = req.ip || 'unknown';
-    return `${ip}:${tenantId}:${userId}`;
+    const tenantId = resolveTenantScope(req);
+    const userId = resolveUserScope(req);
+    return `leads-read:${tenantId}:${userId}`;
   },
   message: 'Too many requests from this tenant/user, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      status: 'error',
+      message: 'Too many requests from this tenant/user, please try again later.',
+      requestId: req.requestId,
+    });
+  },
 });
 
 export const leadMutationLimiter = createTenantUserLimiter('lead-mutation', 30);
@@ -133,6 +163,16 @@ export const refreshLimiter = createTenantUserLimiter('auth-refresh', 20);
 export const leadsMutationsLimiter = createTenantUserLimiter('leads-mutations', 50);
 export const commentsLimiter = createTenantUserLimiter('comments', 30);
 export const tasksMutationsLimiter = createTenantUserLimiter('tasks-mutations', 40);
+
+export const productsRateLimiter = createTenantUserLimiter('products-read', 100);
+export const productsMutationsLimiter = createTenantUserLimiter('products-mutations', 50);
+export const productDeleteLimiter = createTenantUserLimiter('product-delete', 20);
+
+export const groupsRateLimiter = createTenantUserLimiter('groups-read', 100);
+export const groupsMutationsLimiter = createTenantUserLimiter('groups-mutations', 50);
+export const groupDeleteLimiter = createTenantUserLimiter('group-delete', 20);
+
+export { createTenantUserLimiter };
 
 export const apiRateLimiter = rateLimit({
   windowMs: 60 * 1000,
