@@ -86,3 +86,28 @@ export interface Group {
   updated_at: string;
   product_name?: string | null;
 }
+
+export type FormFieldType = 'text' | 'phone' | 'email' | 'dropdown' | 'checkbox' | 'date';
+
+export interface FormField {
+  id: string;
+  type: FormFieldType;
+  label: string;
+  placeholder?: string;
+  required: boolean;
+  options?: string[];
+}
+
+export interface Form {
+  id: string;
+  tenant_id: string;
+  product_id?: string | null;
+  name: string;
+  slug: string;
+  fields: FormField[];
+  success_message?: string | null;
+  public_url?: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
