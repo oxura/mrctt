@@ -51,6 +51,7 @@ export const errorHandler = (
   const response: any = {
     status: 'error',
     message,
+    requestId: req.requestId,
   };
 
   if (env.NODE_ENV !== 'production') {
@@ -64,6 +65,7 @@ export const notFoundHandler = (req: Request, res: Response) => {
   res.status(404).json({
     status: 'error',
     message: `Route ${req.originalUrl} not found`,
+    requestId: req.requestId,
   });
 };
 

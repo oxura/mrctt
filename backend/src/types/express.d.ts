@@ -8,5 +8,9 @@ declare global {
       permissions?: string[];
       requestId?: string;
     }
+
+    interface Locals {
+      cspNonce?: string;
+    }
   }
 }

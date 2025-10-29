@@ -295,17 +295,30 @@ const Products: React.FC = () => {
                         type="checkbox"
                         checked={isAllSelected}
                         onChange={toggleSelectAll}
+                        aria-label="Выбрать все продукты"
                       />
                     </th>
-                    <th className={styles.sortableHeader} onClick={() => handleSort('name')}>
+                    <th
+                      className={styles.sortableHeader}
+                      onClick={() => handleSort('name')}
+                      aria-sort={sortColumn === 'name' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
                       Название {renderSortIcon('name')}
                     </th>
                     <th>Тип</th>
-                    <th className={styles.sortableHeader} onClick={() => handleSort('price')}>
+                    <th
+                      className={styles.sortableHeader}
+                      onClick={() => handleSort('price')}
+                      aria-sort={sortColumn === 'price' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
                       Цена {renderSortIcon('price')}
                     </th>
                     <th>Статус</th>
-                    <th className={styles.sortableHeader} onClick={() => handleSort('created_at')}>
+                    <th
+                      className={styles.sortableHeader}
+                      onClick={() => handleSort('created_at')}
+                      aria-sort={sortColumn === 'created_at' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
                       Создан {renderSortIcon('created_at')}
                     </th>
                     <th className={styles.actionsCell}>Действия</th>
@@ -319,6 +332,7 @@ const Products: React.FC = () => {
                           type="checkbox"
                           checked={selectedRows.includes(product.id)}
                           onChange={() => toggleRow(product.id)}
+                          aria-label={`Выбрать продукт ${product.name}`}
                         />
                       </td>
                       <td className={styles.nameCell}>
@@ -349,6 +363,7 @@ const Products: React.FC = () => {
                         <button
                           className={styles.actionButton}
                           onClick={() => handleEditClick(product)}
+                          aria-label={`Редактировать продукт ${product.name}`}
                         >
                           ✏️
                         </button>
