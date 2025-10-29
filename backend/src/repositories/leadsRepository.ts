@@ -1,4 +1,4 @@
-import { pool } from '../db/client';
+import { pool, PoolClientLike } from '../db/client';
 import { AppError } from '../utils/appError';
 
 export interface Lead {
@@ -76,7 +76,8 @@ export interface LeadsListResult {
 }
 
 export class LeadsRepository {
-  async create(tenantId: string, data: CreateLeadDto, userId?: string): Promise<Lead> {
+  async create(tenantId: string, data: CreateLeadDto, userId?: string, client?: PoolClientLike): Promise<Lead> {
+    const db = client || pool;
     const query = `
       INSERT INTO leads (
         tenant_id, product_id, group_id, assigned_to, status,
@@ -110,7 +111,7 @@ export class LeadsRepository {
       customFieldsJson,
     ];
 
-    const result = await pool.query(query, values);
+    const result = await db.query(query, values);
     const lead = result.rows[0];
 
     if (userId) {
@@ -119,21 +120,23 @@ export class LeadsRepository {
         lead.id,
         userId,
         'lead_created',
-        'Лид создан'
+        'Лид создан',
+        client
       );
     }
 
-    return this.findById(tenantId, lead.id);
+    return this.findById(tenantId, lead.id, client);
   }
 
-  async getOwnerIdIfExists(tenantId: string, leadId: string): Promise<string | null> {
+  async getOwnerIdIfExists(tenantId: string, leadId: string, client?: PoolClientLike): Promise<string | null> {
+    const db = client || pool;
     const query = `
       SELECT assigned_to
       FROM leads
       WHERE id = $1 AND tenant_id = $2
     `;
 
-    const result = await pool.query(query, [leadId, tenantId]);
+    const result = await db.query(query, [leadId, tenantId]);
 
     if (result.rows.length === 0) {
       return null;
@@ -142,7 +145,8 @@ export class LeadsRepository {
     return result.rows[0].assigned_to || null;
   }
 
-  async findById(tenantId: string, leadId: string): Promise<Lead> {
+  async findById(tenantId: string, leadId: string, client?: PoolClientLike): Promise<Lead> {
+    const db = client || pool;
     const query = `
       SELECT
         l.*,
@@ -160,7 +164,7 @@ export class LeadsRepository {
       WHERE l.id = $1 AND l.tenant_id = $2
     `;
 
-    const result = await pool.query(query, [leadId, tenantId]);
+    const result = await db.query(query, [leadId, tenantId]);
 
     if (result.rows.length === 0) {
       throw new AppError('Lead not found', 404);
@@ -169,7 +173,8 @@ export class LeadsRepository {
     return result.rows[0];
   }
 
-  async findAll(tenantId: string, filters: LeadsFilter): Promise<LeadsListResult> {
+  async findAll(tenantId: string, filters: LeadsFilter, client?: PoolClientLike): Promise<LeadsListResult> {
+    const db = client || pool;
     const {
       status,
       assigned_to,
@@ -191,6 +196,10 @@ export class LeadsRepository {
           return 'l.first_name';
         case 'last_name':
           return 'l.last_name';
+        case 'email':
+          return 'l.email';
+        case 'product_name':
+          return 'p.name';
         default:
           return 'l.created_at';
       }
@@ -243,7 +252,7 @@ export class LeadsRepository {
       LEFT JOIN products p ON l.product_id = p.id
       WHERE ${whereClause}
     `;
-    const countResult = await pool.query(countQuery, values);
+    const countResult = await db.query(countQuery, values);
     const total = countResult.rows[0].total;
 
     const offset = (page - 1) * pageSize;
@@ -271,7 +280,7 @@ export class LeadsRepository {
       LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
     `;
 
-    const dataResult = await pool.query(dataQuery, dataValues);
+    const dataResult = await db.query(dataQuery, dataValues);
 
     return {
       leads: dataResult.rows,
@@ -286,9 +295,11 @@ export class LeadsRepository {
     tenantId: string,
     leadId: string,
     data: UpdateLeadDto,
-    userId?: string
+    userId?: string,
+    client?: PoolClientLike
   ): Promise<Lead> {
-    const oldLead = await this.findById(tenantId, leadId);
+    const db = client || pool;
+    const oldLead = await this.findById(tenantId, leadId, client);
 
     const fields: string[] = [];
     const values: any[] = [];
@@ -392,7 +403,7 @@ export class LeadsRepository {
       RETURNING *
     `;
 
-    await pool.query(query, [...values, leadId, tenantId]);
+    await db.query(query, [...values, leadId, tenantId]);
 
     if (userId) {
       const changes: string[] = [];
@@ -409,21 +420,24 @@ export class LeadsRepository {
           leadId,
           userId,
           'lead_updated',
-          `Лид обновлен: ${changes.join(', ')}`
+          `Лид обновлен: ${changes.join(', ')}`,
+          client
         );
       }
     }
 
-    return this.findById(tenantId, leadId);
+    return this.findById(tenantId, leadId, client);
   }
 
   async updateStatus(
     tenantId: string,
     leadId: string,
     status: string,
-    userId?: string
+    userId?: string,
+    client?: PoolClientLike
   ): Promise<Lead> {
-    const oldLead = await this.findById(tenantId, leadId);
+    const db = client || pool;
+    const oldLead = await this.findById(tenantId, leadId, client);
 
     const query = `
       UPDATE leads
@@ -432,7 +446,7 @@ export class LeadsRepository {
       RETURNING *
     `;
 
-    await pool.query(query, [status, leadId, tenantId]);
+    await db.query(query, [status, leadId, tenantId]);
 
     if (userId) {
       await this.logActivity(
@@ -440,16 +454,18 @@ export class LeadsRepository {
         leadId,
         userId,
         'status_changed',
-        `Статус изменен: ${oldLead.status} → ${status}`
+        `Статус изменен: ${oldLead.status} → ${status}`,
+        client
       );
     }
 
-    return this.findById(tenantId, leadId);
+    return this.findById(tenantId, leadId, client);
   }
 
-  async delete(tenantId: string, leadId: string, userId?: string): Promise<void> {
+  async delete(tenantId: string, leadId: string, userId?: string, client?: PoolClientLike): Promise<void> {
+    const db = client || pool;
     if (userId) {
-      await this.logActivity(tenantId, leadId, userId, 'lead_deleted', 'Лид удален');
+      await this.logActivity(tenantId, leadId, userId, 'lead_deleted', 'Лид удален', client);
     }
 
     const query = `
@@ -457,7 +473,7 @@ export class LeadsRepository {
       WHERE id = $1 AND tenant_id = $2
     `;
 
-    const result = await pool.query(query, [leadId, tenantId]);
+    const result = await db.query(query, [leadId, tenantId]);
 
     if (result.rowCount === 0) {
       throw new AppError('Lead not found', 404);
@@ -468,14 +484,15 @@ export class LeadsRepository {
     tenantId: string,
     leadIds: string[],
     status: string,
-    userId?: string
+    userId?: string,
+    client?: PoolClientLike
   ): Promise<{ updated: number; failed: number }> {
     let updated = 0;
     let failed = 0;
 
     for (const leadId of leadIds) {
       try {
-        await this.updateStatus(tenantId, leadId, status, userId);
+        await this.updateStatus(tenantId, leadId, status, userId, client);
         updated++;
       } catch (error) {
         failed++;
@@ -489,8 +506,10 @@ export class LeadsRepository {
     tenantId: string,
     searchQuery: string,
     page: number = 1,
-    pageSize: number = 10
+    pageSize: number = 10,
+    client?: PoolClientLike
   ): Promise<LeadsListResult> {
+    const db = client || pool;
     const lowerQuery = searchQuery.toLowerCase();
     const searchPattern = `%${lowerQuery}%`;
 
@@ -512,7 +531,7 @@ export class LeadsRepository {
       FROM leads l
       WHERE ${whereClause}
     `;
-    const countResult = await pool.query(countQuery, values);
+    const countResult = await db.query(countQuery, values);
     const total = countResult.rows[0].total;
 
     const offset = (page - 1) * pageSize;
@@ -537,7 +556,7 @@ export class LeadsRepository {
       LIMIT $3 OFFSET $4
     `;
 
-    const dataResult = await pool.query(dataQuery, dataValues);
+    const dataResult = await db.query(dataQuery, dataValues);
 
     return {
       leads: dataResult.rows,
@@ -553,14 +572,16 @@ export class LeadsRepository {
     leadId: string,
     userId: string,
     activityType: string,
-    description: string
+    description: string,
+    client?: PoolClientLike
   ): Promise<void> {
+    const db = client || pool;
     const query = `
       INSERT INTO lead_activities (tenant_id, lead_id, user_id, activity_type, description)
       VALUES ($1, $2, $3, $4, $5)
     `;
 
-    await pool.query(query, [tenantId, leadId, userId, activityType, description]);
+    await db.query(query, [tenantId, leadId, userId, activityType, description]);
   }
 }
 
