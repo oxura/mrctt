@@ -5,6 +5,7 @@ import AddLeadModal from '../../components/modals/AddLeadModal';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 import { useLeads, Lead, CreateLeadDto } from '../../hooks/useLeads';
 import { useUsers } from '../../hooks/useUsers';
+import { useProducts } from '../../hooks/useProducts';
 import { leadStatusMeta } from '../../data/leads';
 import { useToast } from '../../components/ui/toastContext';
 import styles from './Leads.module.css';
@@ -37,6 +38,7 @@ const Leads: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | string>('all');
+  const [productFilter, setProductFilter] = useState<'all' | string>('all');
   const [managerFilter, setManagerFilter] = useState<'all' | string>('all');
   const [pageSize, setPageSize] = useState(pageSizeOptions[0]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -51,6 +53,7 @@ const Leads: React.FC = () => {
   const { data, loading, error, setFilters, createLead, updateLeadStatus, deleteLead } = useLeads({
     search: searchTerm || undefined,
     status: statusFilter !== 'all' ? statusFilter : undefined,
+    product_id: productFilter !== 'all' ? productFilter : undefined,
     assigned_to: managerFilter !== 'all' ? managerFilter : undefined,
     sort_by: sortColumn,
     sort_direction: sortDirection,
@@ -58,6 +61,7 @@ const Leads: React.FC = () => {
     page_size: pageSize,
   });
   const { users } = useUsers();
+  const { data: productsData } = useProducts({ page_size: 100, sort_by: 'name', sort_direction: 'asc' });
   const { success: showToastSuccess, error: showToastError } = useToast();
   const [optimisticLeads, setOptimisticLeads] = useState<Lead[]>([]);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
@@ -65,7 +69,7 @@ const Leads: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedRows([]);
-  }, [searchTerm, statusFilter, managerFilter, pageSize, sortColumn, sortDirection]);
+  }, [searchTerm, statusFilter, productFilter, managerFilter, pageSize, sortColumn, sortDirection]);
 
   useEffect(() => {
     if (viewMode === 'board' && selectedRows.length > 0) {
@@ -77,13 +81,25 @@ const Leads: React.FC = () => {
     setFilters({
       search: searchTerm || undefined,
       status: statusFilter !== 'all' ? statusFilter : undefined,
+      product_id: productFilter !== 'all' ? productFilter : undefined,
       assigned_to: managerFilter !== 'all' ? managerFilter : undefined,
       sort_by: sortColumn,
       sort_direction: sortDirection,
       page: currentPage,
       page_size: pageSize,
     });
-  }, [searchTerm, statusFilter, managerFilter, sortColumn, sortDirection, currentPage, pageSize, setFilters]);
+  }, [
+    searchTerm,
+    statusFilter,
+    productFilter,
+    managerFilter,
+    sortColumn,
+    sortDirection,
+    currentPage,
+    pageSize,
+    setFilters,
+  ]);
+
 
   useEffect(() => {
     if (data?.leads) {
@@ -118,6 +134,14 @@ const Leads: React.FC = () => {
 
     return `${count} лидов`;
   };
+
+  const productOptions = useMemo(() => {
+    const products = productsData?.products || [];
+    return products.map((product) => ({
+      id: product.id,
+      name: product.name,
+    }));
+  }, [productsData]);
 
   const managerOptions = useMemo(() => {
     return users
@@ -513,6 +537,21 @@ const Leads: React.FC = () => {
                   {Object.entries(leadStatusMeta).map(([status, meta]) => (
                     <option key={status} value={status}>
                       {meta.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Продукт
+                <select
+                  value={productFilter}
+                  onChange={(e) => setProductFilter(e.target.value)}
+                >
+                  <option value="all">Все</option>
+                  {productOptions.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}
                     </option>
                   ))}
                 </select>
