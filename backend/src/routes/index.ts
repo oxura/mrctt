@@ -7,6 +7,7 @@ import dashboardRoutes from './dashboardRoutes';
 import leadRoutes from './leadRoutes';
 import taskRoutes from './taskRoutes';
 import productRoutes from './productRoutes';
+import groupRoutes from './groupRoutes';
 import { generateCSRFToken } from '../utils/tokens';
 import { env } from '../config/env';
 
@@ -20,6 +21,7 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/leads', leadRoutes);
 router.use('/tasks', taskRoutes);
 router.use('/products', productRoutes);
+router.use('/groups', groupRoutes);
 
 router.get('/health', (req, res) => {
   if (!req.cookies?.csrf_token) {

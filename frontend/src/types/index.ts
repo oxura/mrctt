@@ -65,3 +65,20 @@ export interface Product {
   created_at: string;
   updated_at: string;
 }
+
+export type GroupStatus = 'open' | 'full' | 'closed' | 'cancelled';
+
+export interface Group {
+  id: string;
+  tenant_id: string;
+  product_id: string;
+  name: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  max_capacity?: number | null;
+  current_capacity: number;
+  status: GroupStatus;
+  created_at: string;
+  updated_at: string;
+  product_name?: string | null;
+}
