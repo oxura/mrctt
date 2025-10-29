@@ -26,6 +26,22 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ redirectTo = '/login' }
     return <Navigate to="/dashboard" replace />;
   }
 
+  const modules = tenant?.settings?.modules;
+  if (modules && typeof modules === 'object') {
+    const moduleGuards: { path: string; key: keyof typeof modules }[] = [
+      { path: '/products', key: 'products' },
+      { path: '/groups', key: 'groups' },
+      { path: '/tasks', key: 'tasks' },
+      { path: '/team', key: 'team' },
+    ];
+
+    const restrictedModule = moduleGuards.find((guard) => location.pathname.startsWith(guard.path));
+
+    if (restrictedModule && modules[restrictedModule.key] === false) {
+      return <Navigate to="/dashboard" replace />;
+    }
+  }
+
   return <Outlet />;
 };
 

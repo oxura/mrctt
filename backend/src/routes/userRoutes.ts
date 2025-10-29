@@ -1,7 +1,12 @@
 import { Router } from 'express';
 import {
   listTeamMembers,
-  inviteTeamMember,
+  sendTeamInvite,
+  verifyInvite,
+  acceptInvite,
+  updateTeamMemberRole,
+  removeTeamMember,
+  cancelInvite,
   getCurrentUserPermissions,
   listRoles,
 } from '../controllers/userController';
@@ -28,12 +33,42 @@ router.get(
 );
 
 router.post(
-  '/team',
+  '/team/invite',
   authenticate,
   tenantGuard,
   requireAllPermissions('users:create', 'users:manage-roles'),
   auditLog('user.invite', 'user'),
-  inviteTeamMember
+  sendTeamInvite
+);
+
+router.get('/team/invite/:token', verifyInvite);
+
+router.post('/team/accept-invite', acceptInvite);
+
+router.patch(
+  '/team/:userId/role',
+  authenticate,
+  tenantGuard,
+  requireAllPermissions('users:update', 'users:manage-roles'),
+  auditLog('user.role_updated', 'user'),
+  updateTeamMemberRole
+);
+
+router.delete(
+  '/team/:userId',
+  authenticate,
+  tenantGuard,
+  requireAllPermissions('users:delete', 'users:manage-roles'),
+  auditLog('user.removed', 'user'),
+  removeTeamMember
+);
+
+router.delete(
+  '/team/invite/:inviteId',
+  authenticate,
+  tenantGuard,
+  requirePermission('users:create'),
+  cancelInvite
 );
 
 router.get(

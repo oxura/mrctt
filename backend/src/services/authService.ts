@@ -14,6 +14,7 @@ import { emailService } from './emailService';
 import logger from '../utils/logger';
 import { env } from '../config/env';
 import { parseDuration } from '../utils/time';
+import { TeamMemberRepository } from '../repositories/teamMemberRepository';
 
 const normalizeSlug = (value: string): string =>
   value
@@ -40,6 +41,7 @@ export class AuthService {
   private tenantRepo: TenantRepository;
   private refreshTokenRepo: RefreshTokenRepository;
   private loginAttemptRepo: LoginAttemptRepository;
+  private teamMemberRepo: TeamMemberRepository;
   private auditService: AuditService;
 
   constructor() {
@@ -47,6 +49,7 @@ export class AuthService {
     this.tenantRepo = new TenantRepository();
     this.refreshTokenRepo = new RefreshTokenRepository();
     this.loginAttemptRepo = new LoginAttemptRepository();
+    this.teamMemberRepo = new TeamMemberRepository();
     this.auditService = new AuditService();
   }
 
@@ -89,6 +92,19 @@ export class AuthService {
           email: data.email,
           password_hash: passwordHash,
           first_name: data.firstName,
+        },
+        client
+      );
+
+      await this.teamMemberRepo.create(
+        {
+          tenant_id: tenant.id,
+          user_id: user.id,
+          role: user.role,
+          status: 'active',
+          invited_by: null,
+          invited_at: null,
+          joined_at: new Date(),
         },
         client
       );

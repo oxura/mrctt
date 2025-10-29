@@ -4,6 +4,7 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
+import AcceptInvite from './pages/auth/AcceptInvite';
 import Dashboard from './pages/dashboard/Dashboard';
 import OnboardingWizard from './pages/onboarding/OnboardingWizard';
 import Landing from './pages/landing/Landing';
@@ -33,6 +34,7 @@ const App: React.FC = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/accept-invite" element={<AcceptInvite />} />
       <Route path="/public-form/:publicUrl" element={<PublicForm />} />
 
       <Route element={<ProtectedRoute />}> 
