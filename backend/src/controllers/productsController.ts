@@ -138,6 +138,38 @@ export class ProductsController {
       next(error);
     }
   }
+
+  async batchUpdateStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const tenantId = req.tenantId!;
+      const { product_ids, status } = req.body;
+
+      if (!Array.isArray(product_ids) || product_ids.length === 0) {
+        throw new AppError('product_ids must be a non-empty array', 400);
+      }
+
+      if (!status || typeof status !== 'string') {
+        throw new AppError('status is required', 400);
+      }
+
+      if (product_ids.length > 100) {
+        throw new AppError('Cannot update more than 100 products at once', 400);
+      }
+
+      const results = await productsService.batchUpdateStatus(tenantId, product_ids, status);
+
+      res.status(200).json({
+        status: 'success',
+        data: {
+          updated: results.updated,
+          failed: results.failed,
+          message: `Updated ${results.updated} products, ${results.failed} failed`,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new ProductsController();

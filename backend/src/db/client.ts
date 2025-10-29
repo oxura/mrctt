@@ -35,6 +35,17 @@ export const withTransaction = async <T>(
   }
 };
 
+export const acquireTenantClient = async (
+  tenantId: string
+): Promise<{ client: PgPoolClient; release: () => void }> => {
+  const client = await pool.connect();
+  await client.query('SET LOCAL app.tenant_id = $1', [tenantId]);
+  const release = () => {
+    client.release();
+  };
+  return { client, release };
+};
+
 export const setTenantContext = async (
   client: PoolClientLike | PgPoolClient,
   tenantId: string

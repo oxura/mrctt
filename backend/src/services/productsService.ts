@@ -35,6 +35,14 @@ export class ProductsService {
     return productsRepository.updateStatus(tenantId, productId, status);
   }
 
+  async batchUpdateStatus(
+    tenantId: string,
+    productIds: string[],
+    status: 'active' | 'archived'
+  ): Promise<{ updated: number; failed: number }> {
+    return productsRepository.batchUpdateStatus(tenantId, productIds, status);
+  }
+
   async deleteProduct(tenantId: string, productId: string): Promise<void> {
     await productsRepository.delete(tenantId, productId);
   }

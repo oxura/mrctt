@@ -9,6 +9,10 @@ import taskRoutes from './taskRoutes';
 import productRoutes from './productRoutes';
 import groupRoutes from './groupRoutes';
 import healthRoutes from './healthRoutes';
+import searchRoutes from './searchRoutes';
+import { productGroupsForProductRouter, productGroupRouter } from './productGroupsRoutes';
+import { authenticate } from '../middleware/auth';
+import { tenantGuard } from '../middleware/tenant';
 
 const router = Router();
 
@@ -21,6 +25,9 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/leads', leadRoutes);
 router.use('/tasks', taskRoutes);
 router.use('/products', productRoutes);
+router.use('/products/:productId/groups', authenticate, tenantGuard, productGroupsForProductRouter);
+router.use('/product-groups', authenticate, tenantGuard, productGroupRouter);
 router.use('/groups', groupRoutes);
+router.use('/search', searchRoutes);
 
 export default router;

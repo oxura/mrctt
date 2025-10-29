@@ -1,29 +1,44 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import styles from './Topbar.module.css';
 import { useAuthStore } from '../../store/authStore';
-import { searchLeads } from '../../data/globalSearchData';
 import { useClickOutside } from '../../hooks/useClickOutside';
+import api from '../../utils/api';
 
 interface TopbarProps {
   breadcrumbs?: string[];
   onMenuClick?: () => void;
 }
 
+interface SearchResult {
+  id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  status: string;
+  product_name?: string | null;
+  assigned_name?: string | null;
+}
+
 const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
   const { user, clear } = useAuthStore();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<typeof searchLeads>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLFormElement>(null);
   const mobileSearchRef = useRef<HTMLDivElement>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const hasSearchResults = searchResults.length > 0;
 
@@ -59,28 +74,50 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
   }, [closeAllMenus]);
 
   useEffect(() => {
-    const debounceTimer = setTimeout(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const debounceTimer = setTimeout(async () => {
       if (searchQuery.trim().length > 0) {
-        const query = searchQuery.toLowerCase();
-        const results = searchLeads.filter(
-          (lead) =>
-            lead.name.toLowerCase().includes(query) ||
-            lead.phone.includes(query) ||
-            lead.id.toLowerCase().includes(query)
-        );
-        setSearchResults(results);
-        setShowSearchResults(true);
-        if (results.length > 0) {
-          closeNotifications();
-          closeUserMenu();
+        setIsSearching(true);
+        setSearchError(null);
+
+        abortControllerRef.current = new AbortController();
+
+        try {
+          const response = await api.get(`/api/v1/search?q=${encodeURIComponent(searchQuery)}`, {
+            signal: abortControllerRef.current.signal,
+          });
+
+          const leads = response.data.data.leads || [];
+          setSearchResults(leads);
+          setShowSearchResults(true);
+          if (leads.length > 0) {
+            closeNotifications();
+            closeUserMenu();
+          }
+        } catch (err: any) {
+          if (!axios.isCancel(err)) {
+            setSearchError('Ошибка поиска');
+            setSearchResults([]);
+          }
+        } finally {
+          setIsSearching(false);
         }
       } else {
         setSearchResults([]);
         setShowSearchResults(false);
+        setSearchError(null);
       }
-    }, 300);
+    }, 250);
 
-    return () => clearTimeout(debounceTimer);
+    return () => {
+      clearTimeout(debounceTimer);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [searchQuery, closeNotifications, closeUserMenu]);
 
   const handleSearchFocus = useCallback(() => {
@@ -103,8 +140,16 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
     }
   };
 
+  const buildLeadName = (lead: SearchResult) => {
+    const parts = [lead.first_name, lead.last_name].filter(Boolean);
+    if (parts.length > 0) {
+      return parts.join(' ');
+    }
+    return lead.email || lead.phone || 'Без имени';
+  };
+
   const handleSearchResultSelect = (leadId: string) => {
-    navigate(`/leads?lead=${encodeURIComponent(leadId)}`);
+    navigate(`/leads/${encodeURIComponent(leadId)}`);
     setSearchQuery('');
     setShowSearchResults(false);
     if (showMobileSearch) {
@@ -183,12 +228,16 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
               role="listbox"
               aria-label="Результаты поиска"
             >
-              {searchResults.length === 0 ? (
+              {isSearching ? (
+                <div className={styles.emptyState} role="status" aria-live="polite">Поиск...</div>
+              ) : searchError ? (
+                <div className={styles.emptyState} role="status" aria-live="polite">{searchError}</div>
+              ) : searchResults.length === 0 ? (
                 <div className={styles.emptyState} role="status" aria-live="polite">Ничего не найдено</div>
               ) : (
                 <>
                   <div className={styles.searchHeader}>
-                    <span>Лиды</span>
+                    <span>Лиды ({searchResults.length})</span>
                     <button type="submit">Открыть все</button>
                   </div>
                   <ul className={styles.searchResults} role="presentation">
@@ -208,15 +257,15 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
                         }}
                       >
                         <div className={styles.resultMain}>
-                          <span className={styles.resultName}>{result.name}</span>
-                          <span className={styles.resultPhone}>{result.phone}</span>
+                          <span className={styles.resultName}>{buildLeadName(result)}</span>
+                          <span className={styles.resultPhone}>{result.phone || '—'}</span>
                         </div>
                         <div className={styles.resultMeta}>
                           <span className={styles.resultStatus}>{result.status}</span>
-                          <span className={styles.resultManager}>{result.manager}</span>
+                          <span className={styles.resultManager}>{result.assigned_name || '—'}</span>
                         </div>
-                        {result.product && (
-                          <div className={styles.resultProduct}>{result.product}</div>
+                        {result.product_name && (
+                          <div className={styles.resultProduct}>{result.product_name}</div>
                         )}
                       </li>
                     ))}
@@ -387,14 +436,18 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
               </button>
             </div>
 
-            {searchResults.length > 0 ? (
+            {isSearching ? (
+              <div className={styles.mobileSearchEmpty}>Поиск...</div>
+            ) : searchError ? (
+              <div className={styles.mobileSearchEmpty}>{searchError}</div>
+            ) : searchResults.length > 0 ? (
               <div className={styles.mobileSearchResults}>
                 {searchResults.map((result) => (
                   <div
                     key={result.id}
                     className={styles.mobileSearchResult}
                     onClick={() => {
-                      navigate(`/leads?lead=${encodeURIComponent(result.id)}`);
+                      navigate(`/leads/${encodeURIComponent(result.id)}`);
                       setSearchQuery('');
                       closeMobileSearch();
                     }}
@@ -403,22 +456,22 @@ const Topbar: React.FC<TopbarProps> = ({ breadcrumbs = [], onMenuClick }) => {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        navigate(`/leads?lead=${encodeURIComponent(result.id)}`);
+                        navigate(`/leads/${encodeURIComponent(result.id)}`);
                         setSearchQuery('');
                         closeMobileSearch();
                       }
                     }}
                   >
                     <div className={styles.resultMain}>
-                      <span className={styles.resultName}>{result.name}</span>
-                      <span className={styles.resultPhone}>{result.phone}</span>
+                      <span className={styles.resultName}>{buildLeadName(result)}</span>
+                      <span className={styles.resultPhone}>{result.phone || '—'}</span>
                     </div>
                     <div className={styles.resultMeta}>
                       <span className={styles.resultStatus}>{result.status}</span>
-                      <span className={styles.resultManager}>{result.manager}</span>
+                      <span className={styles.resultManager}>{result.assigned_name || '—'}</span>
                     </div>
-                    {result.product && (
-                      <div className={styles.resultProduct}>{result.product}</div>
+                    {result.product_name && (
+                      <div className={styles.resultProduct}>{result.product_name}</div>
                     )}
                   </div>
                 ))}

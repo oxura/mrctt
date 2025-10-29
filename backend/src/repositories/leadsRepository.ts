@@ -464,6 +464,90 @@ export class LeadsRepository {
     }
   }
 
+  async batchUpdateStatus(
+    tenantId: string,
+    leadIds: string[],
+    status: string,
+    userId?: string
+  ): Promise<{ updated: number; failed: number }> {
+    let updated = 0;
+    let failed = 0;
+
+    for (const leadId of leadIds) {
+      try {
+        await this.updateStatus(tenantId, leadId, status, userId);
+        updated++;
+      } catch (error) {
+        failed++;
+      }
+    }
+
+    return { updated, failed };
+  }
+
+  async search(
+    tenantId: string,
+    searchQuery: string,
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<LeadsListResult> {
+    const lowerQuery = searchQuery.toLowerCase();
+    const searchPattern = `%${lowerQuery}%`;
+
+    const conditions = ['l.tenant_id = $1'];
+    const values: any[] = [tenantId];
+
+    values.push(searchPattern);
+    conditions.push('(' +
+      'LOWER(l.email) LIKE $2 OR ' +
+      'l.phone LIKE $2 OR ' +
+      'LOWER(l.first_name) LIKE $2 OR ' +
+      'LOWER(l.last_name) LIKE $2' +
+    ')');
+
+    const whereClause = conditions.join(' AND ');
+
+    const countQuery = `
+      SELECT COUNT(*)::int AS total
+      FROM leads l
+      WHERE ${whereClause}
+    `;
+    const countResult = await pool.query(countQuery, values);
+    const total = countResult.rows[0].total;
+
+    const offset = (page - 1) * pageSize;
+    const dataValues = [...values, pageSize, offset];
+
+    const dataQuery = `
+      SELECT
+        l.*,
+        p.name AS product_name,
+        g.name AS group_name,
+        CASE
+          WHEN u.first_name IS NOT NULL OR u.last_name IS NOT NULL
+          THEN COALESCE(u.first_name || ' ' || u.last_name, u.first_name, u.last_name)
+          ELSE NULL
+        END AS assigned_name
+      FROM leads l
+      LEFT JOIN products p ON l.product_id = p.id
+      LEFT JOIN groups g ON l.group_id = g.id
+      LEFT JOIN users u ON l.assigned_to = u.id
+      WHERE ${whereClause}
+      ORDER BY l.created_at DESC
+      LIMIT $3 OFFSET $4
+    `;
+
+    const dataResult = await pool.query(dataQuery, dataValues);
+
+    return {
+      leads: dataResult.rows,
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: Math.ceil(total / pageSize),
+    };
+  }
+
   private async logActivity(
     tenantId: string,
     leadId: string,
