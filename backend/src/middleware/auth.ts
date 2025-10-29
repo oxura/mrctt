@@ -15,6 +15,8 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
+      // TODO: Support per-client allowlists or signed API keys for non-browser integrations.
+      // ALLOW_BEARER_TOKENS remains the single toggle for enabling Bearer tokens in production.
       if (env.NODE_ENV === 'production' && !env.ALLOW_BEARER_TOKENS) {
         logger.warn('Bearer token rejected in production', {
           requestId: req.requestId,

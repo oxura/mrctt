@@ -1,4 +1,5 @@
 import type { User } from './models';
+import type { PoolClient } from 'pg';
 
 declare global {
   namespace Express {
@@ -7,6 +8,7 @@ declare global {
       tenantId?: string;
       permissions?: string[];
       requestId?: string;
+      db?: PoolClient;
     }
 
     interface Locals {

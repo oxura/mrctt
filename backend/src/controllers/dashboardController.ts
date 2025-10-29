@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import dashboardService from '../services/dashboardService';
+import { AppError } from '../utils/appError';
+import logger from '../utils/logger';
 
 export class DashboardController {
   async getStats(req: Request, res: Response, next: NextFunction) {
@@ -12,6 +14,12 @@ export class DashboardController {
         data: stats,
       });
     } catch (error) {
+      logger.error('Failed to get dashboard stats', {
+        requestId: req.requestId,
+        tenantId: req.tenantId,
+        userId: req.user?.id,
+        error,
+      });
       next(error);
     }
   }
@@ -71,9 +79,8 @@ export class DashboardController {
       const { isCompleted } = req.body;
 
       if (typeof isCompleted !== 'boolean') {
-        return res.status(400).json({
-          status: 'error',
-          message: 'isCompleted must be a boolean',
+        throw new AppError('Validation failed', 400, {
+          isCompleted: ['must be a boolean'],
         });
       }
 

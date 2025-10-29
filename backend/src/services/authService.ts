@@ -247,7 +247,7 @@ export class AuthService {
 
     if (storedToken.is_revoked) {
       if (storedToken.token_family_id) {
-        await this.refreshTokenRepo.revokeTokenFamily(storedToken.token_family_id, tenantId);
+        await this.refreshTokenRepo.revokeFamily(storedToken.token_family_id, tenantId);
       } else {
         await this.refreshTokenRepo.revokeAllUserTokens(userId, tenantId);
       }
@@ -308,7 +308,7 @@ export class AuthService {
     const refreshExpiresAt = new Date(Date.now() + refreshTokenDuration);
     const tokenFamilyId = storedToken.token_family_id ?? crypto.randomUUID();
 
-    await this.refreshTokenRepo.revokeAndCreateNew(storedToken.id, {
+    await this.refreshTokenRepo.rotateToken(storedToken.id, {
       user_id: user.id,
       tenant_id: tenant.id,
       token: newRefreshToken,

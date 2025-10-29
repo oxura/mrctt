@@ -95,7 +95,7 @@ export class RefreshTokenRepository {
     );
   }
 
-  async revokeTokenFamily(tokenFamilyId: string, tenantId: string): Promise<void> {
+  async revokeFamily(tokenFamilyId: string, tenantId: string): Promise<void> {
     await this.db.query(
       `UPDATE refresh_tokens SET is_revoked = true, revoked_at = NOW()
        WHERE token_family_id = $1 AND tenant_id = $2 AND is_revoked = false`,
@@ -103,7 +103,11 @@ export class RefreshTokenRepository {
     );
   }
 
-  async revokeAndCreateNew(
+  async revokeTokenFamily(tokenFamilyId: string, tenantId: string): Promise<void> {
+    await this.revokeFamily(tokenFamilyId, tenantId);
+  }
+
+  async rotateToken(
     oldTokenId: string,
     newToken: CreateRefreshTokenData,
     client: Pool | PoolClient = this.db

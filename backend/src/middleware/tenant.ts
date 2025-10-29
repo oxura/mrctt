@@ -105,7 +105,9 @@ export const tenantGuard = async (req: Request, res: Response, next: NextFunctio
       throw new AppError('Unable to resolve tenant context', 400);
     }
 
-    await pool.query('SELECT set_config($1, $2, true)', ['app.tenant_id', req.tenantId]);
+    if (req.db) {
+      await req.db.query('SET LOCAL app.tenant_id = $1', [req.tenantId]);
+    }
 
     next();
   } catch (error) {

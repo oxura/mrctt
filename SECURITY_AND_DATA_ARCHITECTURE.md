@@ -154,12 +154,13 @@ IP addresses and User-Agent strings are hashed into client fingerprints for secu
 - **Login**: 5 attempts/min per email+tenant+IP
 - **Password Reset**: 3 requests/min per email+tenant+IP
 - **Registration**: 3 attempts/min per IP
-- **Lead Mutations**: 30/min per user/tenant
-- **Comments/Tasks**: 30/min per user/tenant
-- **Deletions**: 20/min per user/tenant
-- **Auth Refresh**: 20/min per user/tenant
+- **Lead Mutations**: 50/min per user+tenant
+- **Comments**: 30/min per user+tenant
+- **Tasks Mutations**: 40/min per user+tenant
+- **Lead Deletions**: 20/min per user+tenant
+- **Auth Refresh**: 20/min per user+tenant
 
-All limiters use tenant+user scoping to prevent cross-tenant abuse.
+All limiters use tenant+user scoping (with IP fallback) to prevent cross-tenant abuse.
 
 ## CORS Configuration (Comment 23)
 
