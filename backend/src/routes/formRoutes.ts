@@ -6,6 +6,7 @@ import { tenantGuard } from '../middleware/tenant';
 const router = Router();
 
 router.get('/public/:publicUrl', formsController.getPublic);
+router.post('/public/:publicUrl/submit', formsController.submitPublic);
 
 router.use(authenticate, tenantGuard);
 

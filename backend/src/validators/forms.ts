@@ -48,3 +48,17 @@ export const updateFormSchema = createFormSchema.partial().extend({
     .optional(),
   is_active: z.boolean().optional(),
 }).strict();
+
+export const submitFormSchema = z.object({
+  values: z.record(
+    z.union([
+      z.string(),
+      z.boolean(),
+      z.array(z.string()),
+      z.null(),
+    ])
+  ),
+  utm_source: z.string().max(255).optional().nullable(),
+  utm_medium: z.string().max(255).optional().nullable(),
+  utm_campaign: z.string().max(255).optional().nullable(),
+}).strict();

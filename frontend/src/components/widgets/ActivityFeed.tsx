@@ -36,6 +36,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ items, loading, error }) =>
       lead_assigned: 'Лид назначен менеджеру',
       lead_updated: 'Лид обновлен',
       comment_added: 'Добавлен комментарий',
+      lead_created_via_form: 'Лид создан через форму',
     };
 
     return mapping[type] || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
