@@ -12,7 +12,8 @@ const updateOnboardingSchema = z.object({
     .string()
     .min(3, 'Slug must be at least 3 characters')
     .max(60, 'Slug must not exceed 60 characters')
-    .regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens')
+    .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/, 'Slug must start and end with alphanumeric characters, and contain only lowercase letters, numbers, and hyphens')
+    .refine((val) => !val.includes('--'), 'Slug cannot contain consecutive hyphens')
     .optional(),
   logo_url: z.string().nullable().optional(),
   country: z.string().optional(),

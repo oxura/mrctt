@@ -7,6 +7,7 @@ import { UserRepository } from '../repositories/userRepository';
 import { TenantRepository } from '../repositories/tenantRepository';
 import { RefreshTokenRepository } from '../repositories/refreshTokenRepository';
 import { LoginAttemptRepository } from '../repositories/loginAttemptRepository';
+import { AuditService } from './auditService';
 import { emailService } from './emailService';
 import logger from '../utils/logger';
 import { env } from '../config/env';
@@ -37,12 +38,14 @@ export class AuthService {
   private tenantRepo: TenantRepository;
   private refreshTokenRepo: RefreshTokenRepository;
   private loginAttemptRepo: LoginAttemptRepository;
+  private auditService: AuditService;
 
   constructor() {
     this.userRepo = new UserRepository();
     this.tenantRepo = new TenantRepository();
     this.refreshTokenRepo = new RefreshTokenRepository();
     this.loginAttemptRepo = new LoginAttemptRepository();
+    this.auditService = new AuditService();
   }
 
   async register(data: RegisterData) {
@@ -239,6 +242,20 @@ export class AuthService {
         tenantId: storedToken.tenant_id,
         tokenId: storedToken.id,
       });
+
+      this.auditService.record({
+        tenantId: storedToken.tenant_id,
+        userId: storedToken.user_id,
+        action: 'auth.refresh.reuse_detected',
+        resourceType: 'auth_session',
+        resourceId: storedToken.id,
+        details: {
+          tokenId: storedToken.id,
+        },
+      }).catch((err) => {
+        logger.warn('Failed to record audit event for refresh token reuse', { error: err });
+      });
+
       throw new AppError('Token has been revoked for security reasons', 401);
     }
 

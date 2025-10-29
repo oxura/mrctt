@@ -10,6 +10,7 @@ import { requestId } from './middleware/requestId';
 import { requestLogger } from './middleware/requestLogger';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { csrfProtection } from './middleware/csrf';
+import logger from './utils/logger';
 
 const app = express();
 
@@ -20,14 +21,34 @@ const limiter = rateLimit({
 
 app.set('trust proxy', 1);
 
+app.use(requestId);
+
 if (env.NODE_ENV === 'production') {
   app.use((req, res, next) => {
+    if (req.method === 'OPTIONS' || req.path === '/api/v1/health') {
+      return next();
+    }
+    
     const proto = req.headers['x-forwarded-proto'];
     if (proto && proto !== 'https') {
+      logger.warn('Redirecting non-HTTPS request', {
+        requestId: req.requestId,
+        originProto: proto,
+        host: req.headers.host,
+        url: req.originalUrl,
+      });
       return res.redirect(301, `https://${req.headers.host}${req.url}`);
     }
     next();
   });
+  
+  app.use(
+    helmet.hsts({
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    })
+  );
 }
 
 app.use(limiter);
@@ -37,18 +58,19 @@ app.use((req, res, next) => {
   next();
 });
 
+const normalizedFrontendOrigin = env.FRONTEND_URL ? env.FRONTEND_URL.replace(/\/$/, '') : null;
+const normalizedApiOrigin = env.API_URL ? env.API_URL.replace(/\/$/, '') : null;
+
 const connectSources = ["'self'"];
-if (env.FRONTEND_URL) {
-  const frontendOrigin = env.FRONTEND_URL.replace(/\/$/, '');
-  if (frontendOrigin) {
-    connectSources.push(frontendOrigin);
-  }
+if (normalizedFrontendOrigin) {
+  connectSources.push(normalizedFrontendOrigin);
 }
-if (env.API_URL) {
-  const apiOrigin = env.API_URL.replace(/\/$/, '');
-  if (apiOrigin) {
-    connectSources.push(apiOrigin);
-  }
+if (normalizedApiOrigin) {
+  connectSources.push(normalizedApiOrigin);
+}
+if (env.COOKIE_DOMAIN) {
+  const domain = env.COOKIE_DOMAIN.replace(/^\./, '');
+  connectSources.push(`https://*.${domain}`);
 }
 
 app.use(
@@ -59,7 +81,7 @@ app.use(
         scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
         styleSrc: ["'self'"],
         imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: connectSources,
+        connectSrc,
         fontSrc: ["'self'", 'data:'],
         objectSrc: ["'none'"],
         ...(env.NODE_ENV === 'production' ? { upgradeInsecureRequests: [] } : {}),
@@ -68,18 +90,39 @@ app.use(
     },
   })
 );
-const allowedOrigins = [env.FRONTEND_URL];
+const normalizeOrigin = (origin: string): string => {
+  try {
+    const url = new URL(origin);
+    return `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}`;
+  } catch {
+    return origin.replace(/\/$/, '');
+  }
+};
+
+const allowedOrigins = [env.FRONTEND_URL].filter(Boolean).map(normalizeOrigin);
 if (env.API_URL) {
-  allowedOrigins.push(env.API_URL);
+  allowedOrigins.push(normalizeOrigin(env.API_URL));
 }
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin) {
+        return callback(null, true);
+      }
+      
+      const normalized = normalizeOrigin(origin);
+      if (allowedOrigins.includes(normalized)) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        const requestId = randomBytes(8).toString('hex');
+        logger.warn('CORS origin blocked', {
+          requestId,
+          origin,
+          normalizedOrigin: normalized,
+          allowedOrigins,
+        });
+        callback(null, false);
       }
     },
     credentials: true,
@@ -97,7 +140,6 @@ app.use(
 app.use(cookieParser());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(requestId);
 app.use(requestLogger);
 app.use(csrfProtection);
 
