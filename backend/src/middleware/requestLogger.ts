@@ -27,9 +27,6 @@ const sanitizeBody = (body: any): any => {
 };
 
 export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
-  req.requestId = req.headers['x-request-id'] as string || crypto.randomUUID();
-  res.setHeader('X-Request-ID', req.requestId);
-
   const start = Date.now();
 
   res.on('finish', () => {

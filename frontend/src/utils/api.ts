@@ -19,8 +19,13 @@ api.interceptors.request.use((config) => {
   const csrfToken = getCookie('csrf_token');
   const tenantId = getCookie('tenant_id');
 
-  if (csrfToken && config.method !== 'get') {
-    config.headers['X-CSRF-Token'] = csrfToken;
+  config.headers = config.headers ?? {};
+
+  if (csrfToken) {
+    const method = config.method?.toUpperCase();
+    if (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE') {
+      config.headers['X-CSRF-Token'] = csrfToken;
+    }
   }
 
   if (tenantId) {

@@ -5,6 +5,7 @@ import { pool } from '../db/client';
 import { User } from '../types/models';
 import { PermissionRepository } from '../repositories/permissionRepository';
 import { env } from '../config/env';
+import logger from '../utils/logger';
 
 const permissionRepo = new PermissionRepository();
 
@@ -15,6 +16,12 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       if (env.NODE_ENV === 'production' && !env.ALLOW_BEARER_TOKENS) {
+        logger.warn('Bearer token rejected in production', {
+          requestId: req.requestId,
+          ip: req.ip,
+          path: req.originalUrl,
+          userAgent: req.headers['user-agent'],
+        });
         throw new AppError('Bearer tokens not supported for browser clients in production. Use cookies.', 401);
       }
       token = authHeader.substring(7);
