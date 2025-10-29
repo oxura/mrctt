@@ -248,6 +248,91 @@ ${companyName ? `Ваша компания ${companyName} готова к раб
       text,
     });
   }
+
+  async sendTeamInviteEmail(
+    email: string,
+    inviteUrl: string,
+    companyName: string,
+    inviterName: string,
+    role: string
+  ): Promise<boolean> {
+    const roleDisplay = role === 'admin' ? 'Администратор' : 'Менеджер';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+          .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .info-box { background: white; padding: 15px; margin: 20px 0; border-radius: 5px; border-left: 4px solid #667eea; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🤝 Приглашение в команду</h1>
+            <p>Вы приглашены в Экосистему заявок</p>
+          </div>
+          <div class="content">
+            <p>Здравствуйте!</p>
+            <p><strong>${inviterName}</strong> приглашает вас присоединиться к команде <strong>${companyName}</strong> в системе "Экосистема заявок".</p>
+            <div class="info-box">
+              <strong>📋 Ваша роль:</strong> ${roleDisplay}<br>
+              <strong>🏢 Компания:</strong> ${companyName}
+            </div>
+            <p>Для принятия приглашения и создания учетной записи нажмите на кнопку ниже:</p>
+            <div style="text-align: center;">
+              <a href="${inviteUrl}" class="button">Принять приглашение</a>
+            </div>
+            <p>Или скопируйте эту ссылку в браузер:</p>
+            <p style="word-break: break-all; background: white; padding: 10px; border-radius: 4px;">${inviteUrl}</p>
+            <div class="warning">
+              <strong>⏱️ Важно:</strong> Эта ссылка действительна в течение 7 дней.
+            </div>
+            <p>Если вы не ожидали этого приглашения, просто проигнорируйте это письмо.</p>
+            <div class="footer">
+              <p>С уважением,<br>Команда Экосистема заявок</p>
+              <p style="margin-top: 20px;">Это автоматическое письмо, пожалуйста, не отвечайте на него.</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+Здравствуйте!
+
+${inviterName} приглашает вас присоединиться к команде ${companyName} в системе "Экосистема заявок".
+
+Ваша роль: ${roleDisplay}
+Компания: ${companyName}
+
+Для принятия приглашения и создания учетной записи перейдите по следующей ссылке:
+${inviteUrl}
+
+Важно: Эта ссылка действительна в течение 7 дней.
+
+Если вы не ожидали этого приглашения, просто проигнорируйте это письмо.
+
+С уважением,
+Команда Экосистема заявок
+    `.trim();
+
+    return this.sendEmail({
+      to: email,
+      subject: `Приглашение в команду ${companyName} - Экосистема заявок`,
+      html,
+      text,
+    });
+  }
 }
 
 export const emailService = new EmailService();
