@@ -177,7 +177,11 @@ GET /api/v1/health
   - Login: 5 attempts/min per IP+email+tenant
   - Registration: 3 attempts/min per IP
   - Password reset: 3 requests/min per IP+email+tenant
-  - Per-tenant/user limits on leads and tasks endpoints
+  - Per-tenant/user limits:
+    - Leads mutations: 50 req/min per tenant+user
+    - Comments: 30 req/min per tenant+user
+    - Tasks mutations: 40 req/min per tenant+user
+    - Auth refresh: 20 req/min per tenant+user
 - **Helmet.js**: Security headers with CSP
 - **HTTPS**: Automatic redirect in production
 - **Input validation**: Zod schemas for all inputs

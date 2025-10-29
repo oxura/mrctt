@@ -128,7 +128,11 @@ export const leadMutationLimiter = createTenantUserLimiter('lead-mutation', 30);
 export const leadCommentLimiter = createTenantUserLimiter('lead-comment', 30);
 export const leadTaskLimiter = createTenantUserLimiter('lead-task', 30);
 export const leadDeleteLimiter = createTenantUserLimiter('lead-delete', 20);
-export const authRefreshLimiter = createTenantUserLimiter('auth-refresh', 20);
+export const refreshLimiter = createTenantUserLimiter('auth-refresh', 20);
+
+export const leadsMutationsLimiter = createTenantUserLimiter('leads-mutations', 50);
+export const commentsLimiter = createTenantUserLimiter('comments', 30);
+export const tasksMutationsLimiter = createTenantUserLimiter('tasks-mutations', 40);
 
 export const apiRateLimiter = rateLimit({
   windowMs: 60 * 1000,

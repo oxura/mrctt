@@ -8,7 +8,7 @@ import {
   registerLimiter,
   forgotPasswordLimiter,
   resetPasswordLimiter,
-  authRefreshLimiter,
+  refreshLimiter,
 } from '../middleware/rateLimiter';
 
 const router = Router();
@@ -18,7 +18,7 @@ router.post('/login', loginLimiter, loginSuccessLimiter, login);
 router.post('/password/forgot', forgotPasswordLimiter, requestPasswordReset);
 router.post('/password/reset', resetPasswordLimiter, resetPassword);
 
-router.post('/refresh', authRefreshLimiter, refreshSession);
+router.post('/refresh', refreshLimiter, refreshSession);
 router.post('/logout', authenticate, logout);
 router.get('/me', authenticate, getCurrentUser);
 

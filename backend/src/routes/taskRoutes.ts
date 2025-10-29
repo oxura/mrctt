@@ -10,6 +10,7 @@ import {
 import { requireModule } from '../middleware/moduleGuard';
 import { auditLog } from '../middleware/audit';
 import tasksRepository from '../repositories/tasksRepository';
+import { tasksMutationsLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -35,6 +36,7 @@ router.get(
 
 router.post(
   '/',
+  tasksMutationsLimiter,
   requirePermission('tasks:create'),
   auditLog('task.create', 'task'),
   tasksController.createStandalone
@@ -42,6 +44,7 @@ router.post(
 
 router.patch(
   '/:taskId',
+  tasksMutationsLimiter,
   requirePermissionWithOwnership(
     'tasks:update:all',
     'tasks:update:own',
@@ -55,6 +58,7 @@ router.patch(
 
 router.delete(
   '/:taskId',
+  tasksMutationsLimiter,
   requirePermissionWithOwnership(
     'tasks:delete:all',
     'tasks:delete:own',

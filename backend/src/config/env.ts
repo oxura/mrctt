@@ -11,6 +11,7 @@ const envSchema = z.object({
   ALLOW_BEARER_TOKENS: z.coerce.boolean().default(false),
   COOKIE_DOMAIN: z.string().optional(),
   FRONTEND_URL: z.string().url().default('http://localhost:3000'),
+  FRONTEND_URLS: z.string().optional(),
   FRONTEND_ORIGINS: z.string().optional(),
   API_URL: z.string().url().optional(),
   CSP_REPORT_URI: z.string().url().optional(),

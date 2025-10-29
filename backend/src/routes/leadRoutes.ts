@@ -17,6 +17,9 @@ import {
   leadCommentLimiter,
   leadTaskLimiter,
   leadDeleteLimiter,
+  leadsMutationsLimiter,
+  commentsLimiter,
+  tasksMutationsLimiter,
 } from '../middleware/rateLimiter';
 import leadsRepository from '../repositories/leadsRepository';
 import tasksRepository from '../repositories/tasksRepository';
@@ -34,6 +37,7 @@ router.get(
 
 router.post(
   '/',
+  leadsMutationsLimiter,
   leadMutationLimiter,
   requirePermission('leads:create'),
   auditLog('lead.create', 'lead'),
@@ -54,6 +58,7 @@ router.get(
 
 router.patch(
   '/:id',
+  leadsMutationsLimiter,
   leadMutationLimiter,
   requirePermissionWithOwnership(
     'leads:update:all',
@@ -68,6 +73,7 @@ router.patch(
 
 router.patch(
   '/:id/status',
+  leadsMutationsLimiter,
   leadMutationLimiter,
   requirePermissionWithOwnership(
     'leads:update:all',
@@ -82,6 +88,7 @@ router.patch(
 
 router.delete(
   '/:id',
+  leadsMutationsLimiter,
   leadDeleteLimiter,
   requirePermissionWithOwnership(
     'leads:delete:all',
@@ -108,6 +115,8 @@ router.get(
 
 router.post(
   '/:leadId/comments',
+  commentsLimiter,
+  leadCommentLimiter,
   requirePermissionWithOwnership(
     'leads:update:all',
     'leads:update:own',
@@ -145,6 +154,8 @@ router.get(
 
 router.post(
   '/:leadId/tasks',
+  tasksMutationsLimiter,
+  leadTaskLimiter,
   requirePermission('tasks:create'),
   requirePermissionWithOwnership(
     'leads:update:all',
@@ -159,6 +170,7 @@ router.post(
 
 router.patch(
   '/:leadId/tasks/:taskId',
+  tasksMutationsLimiter,
   requirePermissionWithOwnership(
     'tasks:update:all',
     'tasks:update:own',
@@ -172,6 +184,7 @@ router.patch(
 
 router.delete(
   '/:leadId/tasks/:taskId',
+  tasksMutationsLimiter,
   requirePermissionWithOwnership(
     'tasks:delete:all',
     'tasks:delete:own',

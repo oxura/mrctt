@@ -10,6 +10,7 @@ import { requestId } from './middleware/requestId';
 import { requestLogger } from './middleware/requestLogger';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { csrfProtection } from './middleware/csrf';
+import { dbSession } from './middleware/dbSession';
 import logger from './utils/logger';
 
 const app = express();
@@ -17,6 +18,7 @@ const app = express();
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 100,
+  skip: (req) => ['/api/v1/health', '/api/v1/ready'].includes(req.path),
 });
 
 app.set('trust proxy', 1);
@@ -58,12 +60,6 @@ app.use((req, res, next) => {
   next();
 });
 
-const rawFrontendOrigins = [env.FRONTEND_URL, env.FRONTEND_ORIGINS]
-  .filter(Boolean)
-  .flatMap((value) =>
-    (value as string).split(',').map((origin) => origin.trim()).filter((origin) => origin.length > 0)
-  );
-
 const normalizeOrigin = (origin: string): string => {
   try {
     const url = new URL(origin);
@@ -72,6 +68,12 @@ const normalizeOrigin = (origin: string): string => {
     return origin.replace(/\/$/, '');
   }
 };
+
+const rawFrontendOrigins = [env.FRONTEND_URL, env.FRONTEND_URLS, env.FRONTEND_ORIGINS]
+  .filter(Boolean)
+  .flatMap((value) =>
+    (value as string).split(',').map((origin) => origin.trim()).filter((origin) => origin.length > 0)
+  );
 
 const frontendOrigins = Array.from(new Set(rawFrontendOrigins.map(normalizeOrigin)));
 
@@ -87,7 +89,11 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
-        styleSrc: ["'self'"],
+        styleSrc: [
+          "'self'",
+          ...(env.NODE_ENV !== 'production' ? ["'unsafe-inline'"] : []),
+          (req, res) => `'nonce-${res.locals.cspNonce}'`,
+        ],
         imgSrc: ["'self'", 'data:', 'https:'],
         connectSrc,
         fontSrc: ["'self'", 'data:'],
@@ -105,20 +111,23 @@ app.use(
       if (!origin) {
         return callback(null, true);
       }
-      
+
       const normalized = normalizeOrigin(origin);
       if (frontendOrigins.includes(normalized)) {
-        callback(null, true);
-      } else {
-        const requestId = randomBytes(8).toString('hex');
-        logger.warn('CORS origin blocked', {
-          requestId,
-          origin,
-          normalizedOrigin: normalized,
-          allowedOrigins: frontendOrigins,
-        });
-        callback(null, false);
+        return callback(null, true);
       }
+
+      logger.warn('CORS origin blocked', {
+        origin,
+        normalizedOrigin: normalized,
+        allowedOrigins: frontendOrigins,
+      });
+
+      if (env.NODE_ENV !== 'production') {
+        return callback(new Error(`CORS blocked for origin: ${origin}`));
+      }
+
+      return callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -138,7 +147,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 app.use(csrfProtection);
 
-app.use('/api/v1', routes);
+app.use('/api/v1', dbSession, routes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
