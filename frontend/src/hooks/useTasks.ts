@@ -17,6 +17,8 @@ export interface Task {
   updated_at: string;
   assigned_name?: string | null;
   created_name?: string | null;
+  lead_first_name?: string | null;
+  lead_last_name?: string | null;
 }
 
 export interface CreateTaskDto {

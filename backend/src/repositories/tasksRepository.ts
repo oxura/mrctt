@@ -17,6 +17,8 @@ export interface Task {
   updated_at: Date;
   assigned_name?: string | null;
   created_name?: string | null;
+  lead_first_name?: string | null;
+  lead_last_name?: string | null;
 }
 
 export interface CreateTaskDto {
@@ -217,6 +219,183 @@ export class TasksRepository {
     if (result.rowCount === 0) {
       throw new AppError('Task not found', 404);
     }
+  }
+
+  async findAll(
+    tenantId: string,
+    filters?: {
+      assignedTo?: string;
+      status?: 'all' | 'completed' | 'pending' | 'overdue';
+      dateFrom?: Date | string;
+      dateTo?: Date | string;
+      leadId?: string;
+    }
+  ): Promise<Task[]> {
+    const whereConditions = ['t.tenant_id = $1'];
+    const values: any[] = [tenantId];
+    let paramCount = 1;
+
+    if (filters?.assignedTo) {
+      paramCount++;
+      whereConditions.push(`t.assigned_to = $${paramCount}`);
+      values.push(filters.assignedTo);
+    }
+
+    if (filters?.leadId) {
+      paramCount++;
+      whereConditions.push(`t.lead_id = $${paramCount}`);
+      values.push(filters.leadId);
+    }
+
+    if (filters?.status) {
+      if (filters.status === 'completed') {
+        whereConditions.push('t.is_completed = true');
+      } else if (filters.status === 'pending') {
+        whereConditions.push('t.is_completed = false AND (t.due_date IS NULL OR t.due_date >= NOW())');
+      } else if (filters.status === 'overdue') {
+        whereConditions.push('t.is_completed = false AND t.due_date < NOW()');
+      }
+    }
+
+    if (filters?.dateFrom) {
+      paramCount++;
+      whereConditions.push(`t.due_date >= $${paramCount}`);
+      values.push(filters.dateFrom);
+    }
+
+    if (filters?.dateTo) {
+      paramCount++;
+      whereConditions.push(`t.due_date <= $${paramCount}`);
+      values.push(filters.dateTo);
+    }
+
+    const query = `
+      SELECT
+        t.*,
+        CASE
+          WHEN u1.first_name IS NOT NULL OR u1.last_name IS NOT NULL
+          THEN COALESCE(u1.first_name || ' ' || u1.last_name, u1.first_name, u1.last_name)
+          ELSE u1.email
+        END AS assigned_name,
+        CASE
+          WHEN u2.first_name IS NOT NULL OR u2.last_name IS NOT NULL
+          THEN COALESCE(u2.first_name || ' ' || u2.last_name, u2.first_name, u2.last_name)
+          ELSE u2.email
+        END AS created_name,
+        l.first_name AS lead_first_name,
+        l.last_name AS lead_last_name
+      FROM tasks t
+      LEFT JOIN users u1 ON t.assigned_to = u1.id
+      LEFT JOIN users u2 ON t.created_by = u2.id
+      LEFT JOIN leads l ON t.lead_id = l.id
+      WHERE ${whereConditions.join(' AND ')}
+      ORDER BY
+        CASE WHEN t.is_completed THEN 1 ELSE 0 END,
+        t.due_date ASC NULLS LAST,
+        t.created_at DESC
+    `;
+
+    const result = await pool.query(query, values);
+    return result.rows;
+  }
+
+  async findByDateRange(
+    tenantId: string,
+    dateFrom: Date | string,
+    dateTo: Date | string
+  ): Promise<Task[]> {
+    const query = `
+      SELECT
+        t.*,
+        CASE
+          WHEN u1.first_name IS NOT NULL OR u1.last_name IS NOT NULL
+          THEN COALESCE(u1.first_name || ' ' || u1.last_name, u1.first_name, u1.last_name)
+          ELSE u1.email
+        END AS assigned_name,
+        CASE
+          WHEN u2.first_name IS NOT NULL OR u2.last_name IS NOT NULL
+          THEN COALESCE(u2.first_name || ' ' || u2.last_name, u2.first_name, u2.last_name)
+          ELSE u2.email
+        END AS created_name,
+        l.first_name AS lead_first_name,
+        l.last_name AS lead_last_name
+      FROM tasks t
+      LEFT JOIN users u1 ON t.assigned_to = u1.id
+      LEFT JOIN users u2 ON t.created_by = u2.id
+      LEFT JOIN leads l ON t.lead_id = l.id
+      WHERE t.tenant_id = $1
+        AND t.due_date IS NOT NULL
+        AND t.due_date >= $2
+        AND t.due_date <= $3
+      ORDER BY t.due_date ASC
+    `;
+
+    const result = await pool.query(query, [tenantId, dateFrom, dateTo]);
+    return result.rows;
+  }
+
+  async findOverdue(tenantId: string, userId?: string): Promise<Task[]> {
+    const whereConditions = [
+      't.tenant_id = $1',
+      't.is_completed = false',
+      't.due_date < NOW()',
+    ];
+    const values: any[] = [tenantId];
+
+    if (userId) {
+      values.push(userId);
+      whereConditions.push(`t.assigned_to = $${values.length}`);
+    }
+
+    const query = `
+      SELECT
+        t.*,
+        CASE
+          WHEN u1.first_name IS NOT NULL OR u1.last_name IS NOT NULL
+          THEN COALESCE(u1.first_name || ' ' || u1.last_name, u1.first_name, u1.last_name)
+          ELSE u1.email
+        END AS assigned_name,
+        CASE
+          WHEN u2.first_name IS NOT NULL OR u2.last_name IS NOT NULL
+          THEN COALESCE(u2.first_name || ' ' || u2.last_name, u2.first_name, u2.last_name)
+          ELSE u2.email
+        END AS created_name,
+        l.first_name AS lead_first_name,
+        l.last_name AS lead_last_name
+      FROM tasks t
+      LEFT JOIN users u1 ON t.assigned_to = u1.id
+      LEFT JOIN users u2 ON t.created_by = u2.id
+      LEFT JOIN leads l ON t.lead_id = l.id
+      WHERE ${whereConditions.join(' AND ')}
+      ORDER BY t.due_date ASC
+    `;
+
+    const result = await pool.query(query, values);
+    return result.rows;
+  }
+
+  async createStandalone(tenantId: string, data: CreateTaskDto, userId: string): Promise<Task> {
+    const query = `
+      INSERT INTO tasks (
+        tenant_id, lead_id, assigned_to, created_by,
+        title, description, due_date, priority
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `;
+
+    const values = [
+      tenantId,
+      data.lead_id || null,
+      data.assigned_to || null,
+      userId,
+      data.title,
+      data.description || null,
+      data.due_date || null,
+      data.priority || 'medium',
+    ];
+
+    const result = await pool.query(query, values);
+    return this.findById(tenantId, result.rows[0].id);
   }
 }
 
