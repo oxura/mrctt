@@ -196,10 +196,12 @@ const GroupModal: React.FC<GroupModalProps> = ({
                 name="max_capacity"
                 value={formData.max_capacity ?? ''}
                 onChange={handleChange}
-                placeholder="20"
+                placeholder="Например, 20"
                 min={1}
               />
-              <span className={groupStyles.hint}>Оставьте пустым, если лимита нет</span>
+              <span className={groupStyles.hint}>
+                Оставьте пустым для неограниченного количества мест
+              </span>
             </div>
           </div>
 
