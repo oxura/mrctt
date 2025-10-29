@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient as PgPoolClient } from 'pg';
 import { env } from '../config/env';
 import logger from '../utils/logger';
 
@@ -14,10 +14,16 @@ pool.on('error', (err) => {
   logger.error('Unexpected error on idle PostgreSQL client', err);
 });
 
-export const withTransaction = async <T>(callback: (client: PoolClientLike) => Promise<T>) => {
+export const withTransaction = async <T>(
+  callback: (client: PoolClientLike) => Promise<T>,
+  tenantId?: string
+) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    if (tenantId) {
+      await client.query('SET LOCAL app.tenant_id = $1', [tenantId]);
+    }
     const result = await callback(client);
     await client.query('COMMIT');
     return result;
@@ -27,6 +33,13 @@ export const withTransaction = async <T>(callback: (client: PoolClientLike) => P
   } finally {
     client.release();
   }
+};
+
+export const setTenantContext = async (
+  client: PoolClientLike | PgPoolClient,
+  tenantId: string
+): Promise<void> => {
+  await client.query('SET LOCAL app.tenant_id = $1', [tenantId]);
 };
 
 export interface PoolClientLike {

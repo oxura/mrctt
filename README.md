@@ -190,6 +190,28 @@ Migration files are located in `backend/migrations/` and are executed in order b
 6. **Password Hashing** - bcrypt with salt rounds
 7. **Input Validation** - Zod schemas for all requests
 
+### Authentication Strategy
+
+The platform uses **cookie-based authentication** for enhanced security:
+
+- **Access Tokens**: Short-lived JWT (15 minutes) stored in httpOnly cookies
+- **Refresh Tokens**: Long-lived tokens (7 days) for session renewal, stored in httpOnly cookies with rotation on use
+- **CSRF Protection**: Required for all state-changing requests (POST/PUT/PATCH/DELETE)
+  - CSRF token set in non-httpOnly cookie `csrf_token`
+  - Frontend must send token in `X-CSRF-Token` header
+  - Exempt endpoints: `/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/password/*`, `/public/forms/*`
+- **Bearer Tokens**: Disabled by default for browser clients in production
+  - Set `ALLOW_BEARER_TOKENS=true` to enable for API-only clients (mobile apps, integrations)
+  - When enabled, send JWT in `Authorization: Bearer <token>` header
+
+### Token Refresh Flow
+
+1. On 401 response, frontend automatically calls `POST /api/v1/auth/refresh`
+2. Backend validates refresh token, revokes it (single-use), and issues new access + refresh tokens
+3. Frontend retries original request with new access token
+4. If refresh fails, user is redirected to login
+5. Token reuse detection: All tokens in family are revoked on suspicious activity
+
 ## Logging
 
 Winston logger with different transports:

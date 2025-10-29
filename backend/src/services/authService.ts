@@ -224,25 +224,18 @@ export class AuthService {
     return userWithoutPassword;
   }
 
-  async refreshAccessToken(refreshToken: string, userId: string) {
-    const storedToken = await this.refreshTokenRepo.findValidByToken(refreshToken, userId);
+  async rotateRefreshToken(refreshToken: string) {
+    const storedToken = await this.refreshTokenRepo.findByToken(refreshToken);
 
     if (!storedToken) {
-      const user = await this.userRepo.findById(userId);
-      if (user && user.tenant_id) {
-        await this.refreshTokenRepo.revokeTokenFamily(userId, user.tenant_id);
-        logger.warn('Refresh token reuse detected - revoking token family', {
-          userId,
-          tenantId: user.tenant_id,
-        });
-      }
+      logger.warn('Refresh token not found', { refreshTokenPreview: refreshToken.slice(0, 8) });
       throw new AppError('Invalid or expired refresh token', 401);
     }
 
     if (storedToken.is_revoked) {
-      await this.refreshTokenRepo.revokeTokenFamily(userId, storedToken.tenant_id);
+      await this.refreshTokenRepo.revokeTokenFamily(storedToken.user_id, storedToken.tenant_id);
       logger.warn('Revoked refresh token reuse detected - revoking token family', {
-        userId,
+        userId: storedToken.user_id,
         tenantId: storedToken.tenant_id,
         tokenId: storedToken.id,
       });
@@ -250,17 +243,22 @@ export class AuthService {
     }
 
     if (storedToken.expires_at <= new Date()) {
+      await this.refreshTokenRepo.revokeToken(storedToken.id);
+      logger.warn('Expired refresh token attempt', {
+        userId: storedToken.user_id,
+        tenantId: storedToken.tenant_id,
+      });
       throw new AppError('Refresh token has expired', 401);
     }
 
     await this.refreshTokenRepo.revokeToken(storedToken.id);
 
-    const user = await this.userRepo.findById(userId);
+    const user = await this.userRepo.findById(storedToken.user_id);
     if (!user || !user.is_active) {
       throw new AppError('User not found or inactive', 401);
     }
 
-    const tenant = await this.tenantRepo.findById(user.tenant_id!);
+    const tenant = await this.tenantRepo.findById(storedToken.tenant_id);
     if (!tenant || !tenant.is_active) {
       throw new AppError('Tenant not found or inactive', 401);
     }

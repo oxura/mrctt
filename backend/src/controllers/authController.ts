@@ -150,18 +150,14 @@ export const getCurrentUser = asyncHandler(async (req: Request, res: Response) =
   });
 });
 
-export const refresh = asyncHandler(async (req: Request, res: Response) => {
+export const refreshSession = asyncHandler(async (req: Request, res: Response) => {
   const refreshToken = req.cookies?.refresh_token;
 
   if (!refreshToken) {
     throw new AppError('Refresh token not found', 401);
   }
 
-  if (!req.user) {
-    throw new AppError('User not authenticated', 401);
-  }
-
-  const result = await authService.refreshAccessToken(refreshToken, req.user.id);
+  const result = await authService.rotateRefreshToken(refreshToken);
 
   const isProduction = env.NODE_ENV === 'production';
   const baseSecureCookieOptions = {
