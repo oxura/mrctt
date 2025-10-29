@@ -1,4 +1,4 @@
-import { pool } from '../db/client';
+import { pool, PoolClientLike } from '../db/client';
 import { AppError } from '../utils/appError';
 import { Product } from '../types/models';
 
@@ -37,7 +37,8 @@ export interface ProductsListResult {
 }
 
 export class ProductsRepository {
-  async create(tenantId: string, data: CreateProductDto): Promise<Product> {
+  async create(tenantId: string, data: CreateProductDto, client?: PoolClientLike): Promise<Product> {
+    const db = client || pool;
     const query = `
       INSERT INTO products (
         tenant_id, name, description, type, price, status
@@ -54,18 +55,19 @@ export class ProductsRepository {
       data.status || 'active',
     ];
 
-    const result = await pool.query(query, values);
+    const result = await db.query(query, values);
     return result.rows[0];
   }
 
-  async findById(tenantId: string, productId: string): Promise<Product> {
+  async findById(tenantId: string, productId: string, client?: PoolClientLike): Promise<Product> {
+    const db = client || pool;
     const query = `
       SELECT *
       FROM products
       WHERE id = $1 AND tenant_id = $2
     `;
 
-    const result = await pool.query(query, [productId, tenantId]);
+    const result = await db.query(query, [productId, tenantId]);
 
     if (result.rows.length === 0) {
       throw new AppError('Product not found', 404);
@@ -74,7 +76,8 @@ export class ProductsRepository {
     return result.rows[0];
   }
 
-  async findAll(tenantId: string, filters: ProductsFilter): Promise<ProductsListResult> {
+  async findAll(tenantId: string, filters: ProductsFilter, client?: PoolClientLike): Promise<ProductsListResult> {
+    const db = client || pool;
     const conditions: string[] = ['tenant_id = $1'];
     const values: any[] = [tenantId];
     let paramCount = 1;
@@ -105,7 +108,7 @@ export class ProductsRepository {
       ${whereClause}
     `;
 
-    const countResult = await pool.query(countQuery, values);
+    const countResult = await db.query(countQuery, values);
     const total = parseInt(countResult.rows[0].total, 10);
 
     const sortBy = filters.sort_by || 'created_at';
@@ -127,7 +130,7 @@ export class ProductsRepository {
 
     values.push(pageSize, offset);
 
-    const dataResult = await pool.query(dataQuery, values);
+    const dataResult = await db.query(dataQuery, values);
 
     return {
       products: dataResult.rows,
@@ -138,7 +141,8 @@ export class ProductsRepository {
     };
   }
 
-  async update(tenantId: string, productId: string, data: UpdateProductDto): Promise<Product> {
+  async update(tenantId: string, productId: string, data: UpdateProductDto, client?: PoolClientLike): Promise<Product> {
+    const db = client || pool;
     const fields: string[] = [];
     const values: any[] = [];
     let paramCount = 0;
@@ -174,7 +178,7 @@ export class ProductsRepository {
     }
 
     if (fields.length === 0) {
-      return this.findById(tenantId, productId);
+      return this.findById(tenantId, productId, client);
     }
 
     paramCount++;
@@ -189,7 +193,7 @@ export class ProductsRepository {
       RETURNING *
     `;
 
-    const result = await pool.query(query, values);
+    const result = await db.query(query, values);
 
     if (result.rows.length === 0) {
       throw new AppError('Product not found', 404);
@@ -198,7 +202,8 @@ export class ProductsRepository {
     return result.rows[0];
   }
 
-  async updateStatus(tenantId: string, productId: string, status: 'active' | 'archived'): Promise<Product> {
+  async updateStatus(tenantId: string, productId: string, status: 'active' | 'archived', client?: PoolClientLike): Promise<Product> {
+    const db = client || pool;
     const query = `
       UPDATE products
       SET status = $1
@@ -206,7 +211,7 @@ export class ProductsRepository {
       RETURNING *
     `;
 
-    const result = await pool.query(query, [status, productId, tenantId]);
+    const result = await db.query(query, [status, productId, tenantId]);
 
     if (result.rows.length === 0) {
       throw new AppError('Product not found', 404);
@@ -218,14 +223,15 @@ export class ProductsRepository {
   async batchUpdateStatus(
     tenantId: string,
     productIds: string[],
-    status: 'active' | 'archived'
+    status: 'active' | 'archived',
+    client?: PoolClientLike
   ): Promise<{ updated: number; failed: number }> {
     let updated = 0;
     let failed = 0;
 
     for (const productId of productIds) {
       try {
-        await this.updateStatus(tenantId, productId, status);
+        await this.updateStatus(tenantId, productId, status, client);
         updated++;
       } catch (error) {
         failed++;
@@ -235,13 +241,14 @@ export class ProductsRepository {
     return { updated, failed };
   }
 
-  async delete(tenantId: string, productId: string): Promise<void> {
+  async delete(tenantId: string, productId: string, client?: PoolClientLike): Promise<void> {
+    const db = client || pool;
     const query = `
       DELETE FROM products
       WHERE id = $1 AND tenant_id = $2
     `;
 
-    const result = await pool.query(query, [productId, tenantId]);
+    const result = await db.query(query, [productId, tenantId]);
 
     if (result.rowCount === 0) {
       throw new AppError('Product not found', 404);
