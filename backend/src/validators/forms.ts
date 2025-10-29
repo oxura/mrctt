@@ -8,8 +8,10 @@ export const formFieldSchema = z.object({
   label: z.string().min(1, 'Label is required').max(255, 'Label must be 255 characters or less'),
   placeholder: z.string().max(255, 'Placeholder must be 255 characters or less').optional(),
   required: z.boolean(),
-  options: z.array(z.string()).optional(),
+  options: z.array(z.string().max(255)).max(100, 'Too many options').optional(),
 }).strict();
+
+export const formFieldsArraySchema = z.array(formFieldSchema).max(50, 'Maximum 50 fields allowed');
 
 export const formsListQuerySchema = z.object({
   product_id: z.string().uuid().optional(),
@@ -50,15 +52,20 @@ export const updateFormSchema = createFormSchema.partial().extend({
 }).strict();
 
 export const submitFormSchema = z.object({
-  values: z.record(
-    z.union([
-      z.string(),
-      z.boolean(),
-      z.array(z.string()),
-      z.null(),
-    ])
-  ),
-  utm_source: z.string().max(255).optional().nullable(),
-  utm_medium: z.string().max(255).optional().nullable(),
-  utm_campaign: z.string().max(255).optional().nullable(),
+  values: z
+    .record(
+      z.union([
+        z.string().max(5000, 'Values must be 5000 characters or less'),
+        z.boolean(),
+        z.array(z.string().max(255)).max(50),
+        z.null(),
+      ])
+    )
+    .refine((values) => Object.keys(values).length <= 50, {
+      message: 'Exceeded maximum allowed fields',
+    }),
+  utm_source: z.string().trim().max(255).optional().nullable(),
+  utm_medium: z.string().trim().max(255).optional().nullable(),
+  utm_campaign: z.string().trim().max(255).optional().nullable(),
+  captcha_token: z.string().min(10).max(1000).optional(),
 }).strict();

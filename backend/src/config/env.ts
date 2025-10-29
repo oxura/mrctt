@@ -23,6 +23,11 @@ const envSchema = z.object({
   EMAIL_PASSWORD: z.string().optional(),
   EMAIL_FROM_ADDRESS: z.string().optional(),
   EMAIL_FROM_NAME: z.string().default('Экосистема заявок'),
+  CAPTCHA_PROVIDER: z.enum(['hcaptcha', 'turnstile']).optional(),
+  HCAPTCHA_SECRET: z.string().optional(),
+  HCAPTCHA_SITEKEY: z.string().optional(),
+  TURNSTILE_SECRET: z.string().optional(),
+  TURNSTILE_SITEKEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

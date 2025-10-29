@@ -1,15 +1,9 @@
 import rateLimit from 'express-rate-limit';
 import type { Request } from 'express';
+import logger from '../utils/logger';
 
 const resolveTenantScope = (req: Request): string => {
-  const tenantHeader = req.headers['x-tenant-id'];
-  const tenantFromHeader = Array.isArray(tenantHeader) ? tenantHeader[0] : tenantHeader;
-  return (
-    req.tenantId ||
-    req.cookies?.tenant_id ||
-    (typeof tenantFromHeader === 'string' ? tenantFromHeader : null) ||
-    'unknown'
-  );
+  return req.tenantId || req.cookies?.tenant_id || 'unknown';
 };
 
 const resolveUserScope = (req: Request): string => {
@@ -173,6 +167,33 @@ export const groupsMutationsLimiter = createTenantUserLimiter('groups-mutations'
 export const groupDeleteLimiter = createTenantUserLimiter('group-delete', 20);
 
 export { createTenantUserLimiter };
+
+export const publicFormSubmitLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  keyGenerator: (req) => {
+    const ip = req.ip || 'unknown';
+    const publicUrl = req.params.publicUrl || 'unknown';
+    return `public-form-submit:${ip}:${publicUrl}`;
+  },
+  message: 'Too many form submissions from this IP. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => false,
+  handler: (req, res) => {
+    logger.warn('Public form submission rate limit exceeded', {
+      ip: req.ip,
+      publicUrl: req.params.publicUrl,
+      userAgent: req.get('user-agent'),
+      requestId: req.requestId,
+    });
+    res.status(429).json({
+      status: 'error',
+      message: 'Too many form submissions from this IP. Please try again later.',
+      requestId: req.requestId,
+    });
+  },
+});
 
 export const apiRateLimiter = rateLimit({
   windowMs: 60 * 1000,

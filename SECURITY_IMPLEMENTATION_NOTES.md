@@ -203,8 +203,110 @@ done
 ### Low Priority
 1. CSP inline style nonces for dynamic components
 2. Accessibility audit for keyboard navigation
-3. Public forms with rate limiting and captcha
-4. Operational runbooks for common scenarios
+3. Operational runbooks for common scenarios
+
+## 13. Public Form Security
+
+### Rate Limiting
+- **10 submissions per hour** per IP + publicUrl combination
+- Tracks submissions at `public-form-submit:{ip}:{publicUrl}`
+- Structured logging on rate limit violations
+- Returns 429 with requestId for tracking
+
+### Captcha Integration
+- Supports hCaptcha and Cloudflare Turnstile
+- Configured via environment variables:
+  - `CAPTCHA_PROVIDER=hcaptcha` or `turnstile`
+  - `HCAPTCHA_SECRET` and `HCAPTCHA_SITEKEY`
+  - `TURNSTILE_SECRET` and `TURNSTILE_SITEKEY`
+- Optional: if not configured, submissions proceed without captcha
+- Verified before processing submission
+
+### Payload Size Limits
+- **32 KB** maximum total JSON payload
+- **5000 characters** maximum per text field
+- **50 fields** maximum per submission
+- Multiple validation layers (controller, service, validator)
+
+### Data Persistence
+- All submissions logged to `form_submissions` table
+- Captures: `ip_address`, `user_agent`, `data`, `lead_id`
+- Enables abuse detection and analytics
+- Linked to created lead for tracking
+
+### Validation
+- Email fields: regex `/^[^\s@]+@[^\s@]+\.[^\s@]+$/`
+- Phone fields: regex `/^[\d\s\+\-\(\)]+$/`
+- Field type validation at submission time
+- Normalized strings (trimmed)
+- Unknown field IDs filtered out
+
+### CSRF Exemption
+- Public form submissions exempt from CSRF tokens
+- Pattern: `/^\/api\/v1\/forms\/public\/.+$/`
+- Pattern: `/^\/api\/v1\/public\/forms\/.+$/`
+- Documented in `csrf.ts`
+
+### Frontend Integration
+- Frontend should use shared API client from `utils/api.ts`
+- Captures `X-Request-ID` for logging
+- Optional: Add captcha widget (hCaptcha or Turnstile)
+- Must send `captcha_token` if captcha is enabled
+
+## 14. Content Security Policy (CSP)
+
+### Current Configuration
+- **Script Sources**: `'self'` + nonce (for inline scripts if needed)
+- **Style Sources**: `'self'` + nonce + `'unsafe-inline'` (dev only)
+- **Production**: No `'unsafe-inline'` allowed
+- **Upgrade Insecure Requests**: Enabled in production
+
+### Dynamic Inline Content Guidelines
+1. **Avoid inline `<script>` and `<style>` tags** - use external files
+2. **If inline required**: include `nonce` attribute from `res.locals.cspNonce`
+3. **React components**: Do NOT use `dangerouslySetInnerHTML` unless absolutely necessary
+4. **Dynamic styles**: Use CSS classes or CSS-in-JS solutions that emit external stylesheets
+
+### ESLint Rule Recommendation
+Add to `.eslintrc.js`:
+```javascript
+rules: {
+  'react/no-danger': 'error',
+  'react/no-danger-with-children': 'error',
+}
+```
+
+### Future: Server-Side Rendering
+If SSR is introduced, ensure nonce is passed to client:
+```html
+<script nonce="${cspNonce}">...</script>
+<style nonce="${cspNonce}">...</style>
+```
+
+## 15. Tenant Header Spoofing Prevention
+
+### Centralized Tenant Resolution
+- **Single source of truth**: `tenantGuard` middleware sets `req.tenantId`
+- **No direct header reads**: Controllers/services must use `req.tenantId`
+- **Audit completed**: No instances of direct `req.headers['x-tenant-id']` in controllers
+
+### Rate Limiter Safety
+- `rateLimiter.ts` now uses **only** `req.tenantId` (not direct header read)
+- Fallback to cookie if needed, but never direct header as primary
+
+### Validation
+- Platform owners can specify tenant via header
+- Non-platform users: tenant validated against JWT claim
+- Mismatch detection logs warning and returns 403
+
+### Testing
+```bash
+# Try spoofing tenant header (should fail for non-platform-owner)
+curl -X GET http://localhost:5000/api/v1/leads \
+  -H "X-Tenant-ID: spoofed-tenant-id" \
+  -H "Cookie: access_token=..." \
+  # Should return 403 or ignore header
+```
 
 ## Environment Variables Reference
 

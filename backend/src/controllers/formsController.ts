@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import formsService from '../services/formsService';
 import { AppError } from '../utils/appError';
 import { formsListQuerySchema, createFormSchema, updateFormSchema, submitFormSchema } from '../validators/forms';
+import { verifyCaptchaToken } from '../utils/captcha';
+import logger from '../utils/logger';
 
 class FormsController {
   async list(req: Request, res: Response, next: NextFunction) {
@@ -54,13 +56,32 @@ class FormsController {
     try {
       const { publicUrl } = req.params;
 
+      const payloadSize = Buffer.byteLength(JSON.stringify(req.body ?? {}), 'utf8');
+      const MAX_PAYLOAD_SIZE = 32 * 1024;
+
+      if (payloadSize > MAX_PAYLOAD_SIZE) {
+        logger.warn('Public form submission payload too large', {
+          requestId: req.requestId,
+          publicUrl,
+          payloadSize,
+        });
+        throw new AppError('Payload too large', 413);
+      }
+
       const parsed = submitFormSchema.safeParse(req.body);
 
       if (!parsed.success) {
         throw new AppError('Validation failed', 400, parsed.error.flatten().fieldErrors);
       }
 
-      const result = await formsService.submitPublicForm(publicUrl, parsed.data);
+      const ipAddress = req.ip || null;
+      const userAgent = req.get('user-agent') || null;
+
+      await verifyCaptchaToken(parsed.data.captcha_token, ipAddress);
+
+      const { captcha_token, ...formData } = parsed.data;
+
+      const result = await formsService.submitPublicForm(publicUrl, formData, ipAddress, userAgent);
 
       res.status(200).json({
         status: 'success',

@@ -5,11 +5,12 @@ import { tenantGuard } from '../middleware/tenant';
 import { requireModule } from '../middleware/moduleGuard';
 import { requirePermission } from '../middleware/rbac';
 import { auditLog } from '../middleware/audit';
+import { publicFormSubmitLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
 router.get('/public/:publicUrl', formsController.getPublic);
-router.post('/public/:publicUrl/submit', formsController.submitPublic);
+router.post('/public/:publicUrl/submit', publicFormSubmitLimiter, formsController.submitPublic);
 
 router.use(authenticate, tenantGuard, requireModule('forms'));
 
