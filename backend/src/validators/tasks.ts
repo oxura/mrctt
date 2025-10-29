@@ -6,7 +6,7 @@ export const createTaskSchema = z.object({
   assigned_to: z.string().uuid('assigned_to must be a valid UUID').nullable().optional(),
   due_date: z.string().datetime().nullable().optional(),
   priority: z.enum(['low', 'medium', 'high']).optional(),
-});
+}).strict();
 
 export const updateTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255, 'Title must be 255 characters or less').optional(),
@@ -15,4 +15,4 @@ export const updateTaskSchema = z.object({
   due_date: z.string().datetime().nullable().optional(),
   priority: z.enum(['low', 'medium', 'high']).optional(),
   is_completed: z.boolean().optional(),
-});
+}).strict();

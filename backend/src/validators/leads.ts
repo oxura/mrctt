@@ -17,7 +17,16 @@ const customFieldsSchema = z.unknown().optional().refine((data) => {
   message: `custom_fields must be a valid JSON object or array and not exceed ${MAX_CUSTOM_FIELDS_SIZE} bytes when serialized`,
 });
 
-export const leadStatusEnum = z.enum(['new', 'working', 'awaiting_payment', 'won', 'lost']);
+export const leadStatusEnum = z.enum([
+  'new',
+  'contacted',
+  'qualified',
+  'proposal_sent',
+  'negotiation',
+  'won',
+  'lost',
+  'on_hold',
+]);
 
 export const leadsListQuerySchema = z.object({
   status: leadStatusEnum.optional(),
@@ -44,7 +53,7 @@ export const createLeadSchema = z.object({
   utm_medium: z.string().max(255, 'UTM medium must be 255 characters or less').nullable().optional(),
   utm_campaign: z.string().max(255, 'UTM campaign must be 255 characters or less').nullable().optional(),
   custom_fields: customFieldsSchema,
-});
+}).strict();
 
 export const updateLeadSchema = z.object({
   product_id: z.string().uuid('product_id must be a valid UUID').nullable().optional(),
@@ -60,7 +69,7 @@ export const updateLeadSchema = z.object({
   utm_medium: z.string().max(255, 'UTM medium must be 255 characters or less').nullable().optional(),
   utm_campaign: z.string().max(255, 'UTM campaign must be 255 characters or less').nullable().optional(),
   custom_fields: customFieldsSchema,
-});
+}).strict();
 
 export const updateLeadStatusSchema = z.object({
   status: leadStatusEnum,

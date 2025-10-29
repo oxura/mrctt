@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -35,6 +35,8 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let refreshingPromise: Promise<any> | null = null;
+
 api.interceptors.response.use(
   (response) => {
     const requestId = response.headers['x-request-id'];
@@ -43,25 +45,37 @@ api.interceptors.response.use(
     }
     return response;
   },
-  async (error) => {
-    const originalRequest = error.config;
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     const requestId = error.response?.headers?.['x-request-id'];
     
     if (requestId) {
-      error.requestId = requestId;
+      (error as any).requestId = requestId;
       if (import.meta.env.DEV) {
-        console.error('[API] Error with Request ID:', requestId);
+        console.error('[API] Error with Request ID:', requestId, error);
       }
     }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
 
+      if (!refreshingPromise) {
+        refreshingPromise = api.post('/auth/refresh')
+          .then((response) => {
+            refreshingPromise = null;
+            return response;
+          })
+          .catch((err) => {
+            refreshingPromise = null;
+            window.location.href = '/login';
+            throw err;
+          });
+      }
+
       try {
-        await api.post('/auth/refresh');
+        await refreshingPromise;
         return api(originalRequest);
       } catch (refreshError) {
-        window.location.href = '/login';
         return Promise.reject(refreshError);
       }
     }
