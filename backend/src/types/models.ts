@@ -47,6 +47,7 @@ export interface User {
   avatar_url?: string | null;
   role: UserRole;
   is_active: boolean;
+  token_version: number;
   last_login_at?: string | null;
   created_at: string;
   updated_at: string;

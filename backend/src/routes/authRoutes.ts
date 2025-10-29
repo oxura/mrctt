@@ -4,6 +4,7 @@ import { requestPasswordReset, resetPassword } from '../controllers/passwordRese
 import { authenticate } from '../middleware/auth';
 import {
   loginLimiter,
+  loginSuccessLimiter,
   registerLimiter,
   forgotPasswordLimiter,
   resetPasswordLimiter,
@@ -13,7 +14,7 @@ import {
 const router = Router();
 
 router.post('/register', registerLimiter, register);
-router.post('/login', loginLimiter, login);
+router.post('/login', loginLimiter, loginSuccessLimiter, login);
 router.post('/password/forgot', forgotPasswordLimiter, requestPasswordReset);
 router.post('/password/reset', resetPasswordLimiter, resetPassword);
 

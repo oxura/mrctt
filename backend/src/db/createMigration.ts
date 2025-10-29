@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import logger from '../utils/logger';
 
 const MIGRATIONS_DIR = path.join(__dirname, '../../migrations');
 
@@ -7,7 +8,7 @@ async function createMigration() {
   const name = process.argv[2];
 
   if (!name) {
-    console.error('Please provide a migration name: npm run migrate:create -- migration_name');
+    logger.error('Please provide a migration name: npm run migrate:create -- migration_name');
     process.exit(1);
   }
 
@@ -19,10 +20,10 @@ async function createMigration() {
 
   await fs.writeFile(filePath, template, { flag: 'wx' });
 
-  console.log(`Created migration file: migrations/${filename}`);
+  logger.info('Migration file created', { filePath: `migrations/${filename}` });
 }
 
 createMigration().catch((err) => {
-  console.error('Failed to create migration file', err);
+  logger.error('Failed to create migration file', { error: err });
   process.exit(1);
 });

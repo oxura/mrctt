@@ -1,5 +1,7 @@
 BEGIN;
 
+DROP TABLE IF EXISTS account_lockouts CASCADE;
+DROP TABLE IF EXISTS login_attempts CASCADE;
 DROP TABLE IF EXISTS refresh_tokens CASCADE;
 
 COMMIT;

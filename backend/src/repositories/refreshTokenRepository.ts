@@ -12,6 +12,8 @@ interface RefreshToken {
   is_revoked: boolean;
   created_at: Date;
   revoked_at: Date | null;
+  token_family_id: string | null;
+  last_used_at: Date | null;
 }
 
 interface CreateRefreshTokenData {
@@ -19,6 +21,7 @@ interface CreateRefreshTokenData {
   tenant_id: string;
   token: string;
   expires_at: Date;
+  token_family_id?: string;
 }
 
 export class RefreshTokenRepository {
@@ -26,23 +29,47 @@ export class RefreshTokenRepository {
 
   async create(data: CreateRefreshTokenData): Promise<RefreshToken> {
     const tokenHash = await hashPassword(data.token);
+    const tokenFamilyId = data.token_family_id ?? null;
     const result = await this.db.query<RefreshToken>(
-      `INSERT INTO refresh_tokens (user_id, tenant_id, token_hash, expires_at)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO refresh_tokens (user_id, tenant_id, token_hash, expires_at, token_family_id)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [data.user_id, data.tenant_id, tokenHash, data.expires_at]
+      [data.user_id, data.tenant_id, tokenHash, data.expires_at, tokenFamilyId]
     );
     return result.rows[0];
   }
 
-  async findByToken(token: string): Promise<RefreshToken | null> {
-    const result = await this.db.query<RefreshToken>(
+  async findByToken(token: string, userId: string, tenantId: string): Promise<RefreshToken | null> {
+    const activeTokens = await this.db.query<RefreshToken>(
       `SELECT * FROM refresh_tokens
-       WHERE expires_at > NOW() - INTERVAL '1 day'
-       ORDER BY created_at DESC`
+       WHERE user_id = $1
+         AND tenant_id = $2
+         AND is_revoked = false
+         AND expires_at > NOW()
+       ORDER BY created_at DESC
+       LIMIT 10`,
+      [userId, tenantId]
     );
 
-    for (const row of result.rows) {
+    for (const row of activeTokens.rows) {
+      const match = await bcrypt.compare(token, row.token_hash);
+      if (match) {
+        return row;
+      }
+    }
+
+    const revokedTokens = await this.db.query<RefreshToken>(
+      `SELECT * FROM refresh_tokens
+       WHERE user_id = $1
+         AND tenant_id = $2
+         AND is_revoked = true
+         AND revoked_at > NOW() - INTERVAL '30 days'
+       ORDER BY revoked_at DESC NULLS LAST
+       LIMIT 5`,
+      [userId, tenantId]
+    );
+
+    for (const row of revokedTokens.rows) {
       const match = await bcrypt.compare(token, row.token_hash);
       if (match) {
         return row;
@@ -54,24 +81,67 @@ export class RefreshTokenRepository {
 
   async revokeToken(id: string): Promise<void> {
     await this.db.query(
-      `UPDATE refresh_tokens SET is_revoked = true, revoked_at = NOW() WHERE id = $1`,
+      `UPDATE refresh_tokens SET is_revoked = true, revoked_at = NOW()
+       WHERE id = $1`,
       [id]
     );
   }
 
-  async revokeAllUserTokens(userId: string): Promise<void> {
+  async revokeAllUserTokens(userId: string, tenantId: string): Promise<void> {
     await this.db.query(
-      `UPDATE refresh_tokens SET is_revoked = true, revoked_at = NOW() 
-       WHERE user_id = $1 AND is_revoked = false`,
-      [userId]
+      `UPDATE refresh_tokens SET is_revoked = true, revoked_at = NOW()
+       WHERE user_id = $1 AND tenant_id = $2 AND is_revoked = false`,
+      [userId, tenantId]
     );
   }
 
-  async revokeTokenFamily(userId: string, tenantId: string): Promise<void> {
+  async revokeTokenFamily(tokenFamilyId: string, tenantId: string): Promise<void> {
     await this.db.query(
-      `UPDATE refresh_tokens SET is_revoked = true, revoked_at = NOW() 
-       WHERE user_id = $1 AND tenant_id = $2 AND is_revoked = false`,
-      [userId, tenantId]
+      `UPDATE refresh_tokens SET is_revoked = true, revoked_at = NOW()
+       WHERE token_family_id = $1 AND tenant_id = $2 AND is_revoked = false`,
+      [tokenFamilyId, tenantId]
+    );
+  }
+
+  async revokeAndCreateNew(
+    oldTokenId: string,
+    newToken: CreateRefreshTokenData,
+    client: Pool | PoolClient = this.db
+  ): Promise<RefreshToken> {
+    const dbClient = client;
+
+    await dbClient.query('BEGIN');
+    try {
+      await dbClient.query(
+        `UPDATE refresh_tokens
+         SET is_revoked = true, revoked_at = NOW(), last_used_at = NOW()
+         WHERE id = $1`,
+        [oldTokenId]
+      );
+
+      const tokenHash = await hashPassword(newToken.token);
+      const tokenFamilyId = newToken.token_family_id ?? null;
+      const result = await dbClient.query<RefreshToken>(
+        `INSERT INTO refresh_tokens (user_id, tenant_id, token_hash, expires_at, token_family_id)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [newToken.user_id, newToken.tenant_id, tokenHash, newToken.expires_at, tokenFamilyId]
+      );
+
+      await dbClient.query('COMMIT');
+      return result.rows[0];
+    } catch (error) {
+      await dbClient.query('ROLLBACK');
+      throw error;
+    }
+  }
+
+  async markTokenUsed(tokenId: string): Promise<void> {
+    await this.db.query(
+      `UPDATE refresh_tokens
+       SET last_used_at = NOW()
+       WHERE id = $1`,
+      [tokenId]
     );
   }
 

@@ -232,11 +232,15 @@ Centralized error handling with:
 ### Backend
 - `DATABASE_URL` - PostgreSQL connection string (required)
 - `JWT_SECRET` - Secret for JWT signing (min 32 chars, required)
-- `JWT_EXPIRES_IN` - Token expiry (default: 7d)
+- `JWT_EXPIRES_IN` - Access token expiry (default: 15m)
+- `REFRESH_TOKEN_EXPIRES_IN` - Refresh token expiry (default: 7d)
 - `PORT` - Server port (default: 5000)
 - `NODE_ENV` - development/test/production
 - `FRONTEND_URL` - CORS origin (default: http://localhost:3000)
+- `ALLOW_BEARER_TOKENS` - Enable Bearer tokens for API clients (default: false)
+- `COOKIE_DOMAIN` - Cookie domain for auth tokens (optional)
 - `LOG_LEVEL` - Logging verbosity (default: info)
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` - Email configuration (optional)
 
 ### Frontend
 - `VITE_API_URL` - Backend API URL

@@ -2,21 +2,39 @@ import rateLimit from 'express-rate-limit';
 
 export const loginLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 5,
-  skipSuccessfulRequests: true,
+  limit: 10,
   keyGenerator: (req) => {
     const email = req.body?.email || '';
     const tenantSlug = req.body?.tenantSlug || '';
     const ip = req.ip || 'unknown';
-    return `login:${ip}:${email}:${tenantSlug}`;
+    return `login-fail:${ip}:${email}:${tenantSlug}`;
   },
-  message: 'Too many login attempts. Please try again in a minute.',
+  message: 'Too many failed login attempts. Please try again in a minute.',
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
     res.status(429).json({
       status: 'error',
-      message: 'Too many login attempts. Please try again in a minute.',
+      message: 'Too many failed login attempts. Please try again in a minute.',
+    });
+  },
+});
+
+export const loginSuccessLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  skipFailedRequests: true,
+  keyGenerator: (req) => {
+    const ip = req.ip || 'unknown';
+    return `login-success:${ip}`;
+  },
+  message: 'Too many successful login attempts from this IP. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      status: 'error',
+      message: 'Too many successful login attempts from this IP. Please try again later.',
     });
   },
 });
