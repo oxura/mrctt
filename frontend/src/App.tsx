@@ -13,6 +13,7 @@ import LeadDetail from './pages/leads/LeadDetail';
 import Products from './pages/products/Products';
 import Groups from './pages/groups/Groups';
 import Forms from './pages/forms/Forms';
+import FormBuilder from './pages/forms/FormBuilder';
 import Tasks from './pages/tasks/Tasks';
 import Team from './pages/team/Team';
 import Settings from './pages/settings/Settings';
@@ -39,6 +40,8 @@ const App: React.FC = () => {
         <Route path="/products" element={<Products />} />
         <Route path="/groups" element={<Groups />} />
         <Route path="/forms" element={<Forms />} />
+        <Route path="/forms/builder" element={<FormBuilder />} />
+        <Route path="/forms/builder/:id" element={<FormBuilder />} />
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/team" element={<Team />} />
         <Route path="/settings" element={<Settings />} />
