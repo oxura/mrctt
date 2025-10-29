@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth';
 import { tenantGuard } from '../middleware/tenant';
 import { requirePermission } from '../middleware/rbac';
 import { auditLog } from '../middleware/audit';
+import { requireModule } from '../middleware/moduleGuard';
 import {
   groupsRateLimiter,
   groupsMutationsLimiter,
@@ -12,7 +13,7 @@ import {
 
 const router = Router();
 
-router.use(authenticate, tenantGuard);
+router.use(authenticate, tenantGuard, requireModule('groups'));
 
 router.get('/', groupsRateLimiter, requirePermission('groups:read'), groupsController.list);
 router.post(

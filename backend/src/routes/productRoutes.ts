@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth';
 import { tenantGuard } from '../middleware/tenant';
 import { requirePermission } from '../middleware/rbac';
 import { auditLog } from '../middleware/audit';
+import { requireModule } from '../middleware/moduleGuard';
 import {
   productsRateLimiter,
   productsMutationsLimiter,
@@ -12,7 +13,7 @@ import {
 
 const router = Router();
 
-router.use(authenticate, tenantGuard);
+router.use(authenticate, tenantGuard, requireModule('products'));
 
 router.get('/', productsRateLimiter, requirePermission('products:read'), productsController.list);
 router.post(
