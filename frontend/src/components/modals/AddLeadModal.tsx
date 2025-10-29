@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CreateLeadDto } from '../../hooks/useLeads';
+import { useProducts } from '../../hooks/useProducts';
 import styles from './AddLeadModal.module.css';
 
 interface AddLeadModalProps {
@@ -19,11 +20,28 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onSubmit }
     source: '',
     utm_source: '',
     status: 'new',
+    product_id: null,
   });
+
+  const { data: productsData } = useProducts({ status: 'active', page_size: 100 });
+  const productOptions = productsData?.products ?? [];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value || null }));
+    setFormData((prev) => {
+      if (name === 'status') {
+        return {
+          ...prev,
+          status: value || undefined,
+        };
+      }
+
+      const field = name as keyof CreateLeadDto;
+      return {
+        ...prev,
+        [field]: value === '' ? null : value,
+      };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,6 +59,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onSubmit }
         source: '',
         utm_source: '',
         status: 'new',
+        product_id: null,
       });
       onClose();
     } catch (err: any) {
@@ -137,6 +156,23 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onSubmit }
               onChange={handleChange}
               placeholder="google, facebook, instagram..."
             />
+          </div>
+
+          <div className={styles.formField}>
+            <label htmlFor="product_id">Продукт</label>
+            <select
+              id="product_id"
+              name="product_id"
+              value={formData.product_id || ''}
+              onChange={handleChange}
+            >
+              <option value="">Не выбран</option>
+              {productOptions.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className={styles.formField}>
