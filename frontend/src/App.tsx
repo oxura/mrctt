@@ -20,6 +20,7 @@ import Settings from './pages/settings/Settings';
 import Profile from './pages/profile/Profile';
 import Notifications from './pages/notifications/Notifications';
 import ComponentsDemo from './pages/components-demo/ComponentsDemo';
+import PublicForm from './pages/public/PublicForm';
 import { useAuthStore } from './store/authStore';
 
 const App: React.FC = () => {
@@ -32,6 +33,7 @@ const App: React.FC = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/public-form/:publicUrl" element={<PublicForm />} />
 
       <Route element={<ProtectedRoute />}> 
         <Route path="/dashboard" element={<Dashboard />} />

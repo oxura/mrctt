@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import formsService from '../services/formsService';
 import { AppError } from '../utils/appError';
-import { formsListQuerySchema, createFormSchema, updateFormSchema } from '../validators/forms';
+import { formsListQuerySchema, createFormSchema, updateFormSchema, submitFormSchema } from '../validators/forms';
 
 class FormsController {
   async list(req: Request, res: Response, next: NextFunction) {
@@ -44,6 +44,30 @@ class FormsController {
       res.status(200).json({
         status: 'success',
         data: form,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async submitPublic(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { publicUrl } = req.params;
+
+      const parsed = submitFormSchema.safeParse(req.body);
+
+      if (!parsed.success) {
+        throw new AppError('Validation failed', 400, parsed.error.flatten().fieldErrors);
+      }
+
+      const result = await formsService.submitPublicForm(publicUrl, parsed.data);
+
+      res.status(200).json({
+        status: 'success',
+        data: {
+          message: 'Form submitted successfully',
+          lead_id: result.lead_id,
+        },
       });
     } catch (error) {
       next(error);
