@@ -5,6 +5,7 @@ import leadsRepository, {
   Lead,
   UpdateLeadDto,
 } from '../repositories/leadsRepository';
+import groupsService from './groupsService';
 
 export class LeadsService {
   async listLeads(tenantId: string, filters: LeadsFilter): Promise<LeadsListResult> {
@@ -16,7 +17,13 @@ export class LeadsService {
     data: CreateLeadDto,
     userId?: string
   ): Promise<Lead> {
-    return leadsRepository.create(tenantId, data, userId);
+    const lead = await leadsRepository.create(tenantId, data, userId);
+
+    if (lead.group_id) {
+      await groupsService.refreshGroupCapacity(tenantId, lead.group_id);
+    }
+
+    return lead;
   }
 
   async getLead(tenantId: string, leadId: string): Promise<Lead> {
@@ -29,7 +36,26 @@ export class LeadsService {
     data: UpdateLeadDto,
     userId?: string
   ): Promise<Lead> {
-    return leadsRepository.update(tenantId, leadId, data, userId);
+    const previousLead = await leadsRepository.findById(tenantId, leadId);
+    const lead = await leadsRepository.update(tenantId, leadId, data, userId);
+
+    const groupIdsToRefresh = new Set<string>();
+
+    if (previousLead.group_id) {
+      groupIdsToRefresh.add(previousLead.group_id);
+    }
+
+    if (lead.group_id) {
+      groupIdsToRefresh.add(lead.group_id);
+    }
+
+    await Promise.all(
+      Array.from(groupIdsToRefresh).map((groupId) =>
+        groupsService.refreshGroupCapacity(tenantId, groupId)
+      )
+    );
+
+    return lead;
   }
 
   async updateLeadStatus(
@@ -42,7 +68,13 @@ export class LeadsService {
   }
 
   async deleteLead(tenantId: string, leadId: string, userId?: string): Promise<void> {
+    const lead = await leadsRepository.findById(tenantId, leadId);
+
     await leadsRepository.delete(tenantId, leadId, userId);
+
+    if (lead.group_id) {
+      await groupsService.refreshGroupCapacity(tenantId, lead.group_id);
+    }
   }
 }
 
