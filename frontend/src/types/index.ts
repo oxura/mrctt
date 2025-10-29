@@ -49,3 +49,19 @@ export interface Tenant {
   created_at: string;
   updated_at: string;
 }
+
+export type ProductType = 'course' | 'service' | 'other';
+export type ProductStatus = 'active' | 'archived';
+
+export interface Product {
+  id: string;
+  tenant_id: string;
+  name: string;
+  description?: string | null;
+  type: ProductType;
+  price?: string | null;
+  currency: string;
+  status: ProductStatus;
+  created_at: string;
+  updated_at: string;
+}

@@ -6,6 +6,7 @@ import auditRoutes from './auditRoutes';
 import dashboardRoutes from './dashboardRoutes';
 import leadRoutes from './leadRoutes';
 import taskRoutes from './taskRoutes';
+import productRoutes from './productRoutes';
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.use('/audit', auditRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/leads', leadRoutes);
 router.use('/tasks', taskRoutes);
+router.use('/products', productRoutes);
 
 router.get('/health', (req, res) => {
   res.status(200).json({

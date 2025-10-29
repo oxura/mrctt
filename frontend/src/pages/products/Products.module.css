@@ -1,18 +1,43 @@
-.products {
+.wrapper {
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
-.header {
+.pageHeader {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   gap: 16px;
+  padding: 18px 24px;
+  background-color: #fff;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(226, 232, 240, 0.7);
 }
 
-.addButton {
-  background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
+.pageHeader h1 {
+  font-size: 28px;
+  margin: 4px 0 0;
+  color: #0f172a;
+}
+
+.pageEyebrow {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.primaryButton {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #fff;
   padding: 12px 20px;
   border-radius: 12px;
@@ -20,25 +45,329 @@
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 10px 25px rgba(124, 58, 237, 0.25);
+  box-shadow: 0 10px 30px rgba(5, 150, 105, 0.22);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.placeholder {
+.primaryButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 32px rgba(5, 150, 105, 0.28);
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.searchBlock {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.searchField {
+  min-width: 260px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 14px;
   background-color: #fff;
-  border-radius: 16px;
-  padding: 28px;
   border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
-.placeholder p {
-  margin: 0;
+.searchField input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filters label {
+  font-size: 13px;
   color: #475569;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+}
+
+.filters select {
+  border-radius: 12px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  padding: 10px 12px;
+  background-color: #fff;
+  font-size: 14px;
+}
+
+.bulkActionsBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  border-radius: 14px;
+  background-color: #f1f5f9;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.bulkCount {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.bulkButtons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.bulkActionButton,
+.bulkDeleteButton {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bulkActionButton {
+  background-color: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+
+.bulkDeleteButton {
+  background-color: rgba(248, 113, 113, 0.16);
+  color: #b91c1c;
+}
+
+.tableCard {
+  background-color: #fff;
+  border-radius: 20px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 24px 56px rgba(15, 23, 42, 0.08);
+  padding: 0;
+}
+
+.loader,
+.errorMessage {
+  padding: 48px;
+  text-align: center;
+  font-size: 16px;
+  color: #475569;
+}
+
+.emptyState {
+  padding: 60px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  margin: 0;
+}
+
+.emptyTitle {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  color: #0f172a;
+}
+
+.emptySubtitle {
+  margin: 0;
+  color: #64748b;
   font-size: 15px;
 }
 
-.placeholder p:first-child {
-  font-size: 17px;
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead tr {
+  background-color: rgba(226, 232, 240, 0.5);
+}
+
+.table th,
+.table td {
+  padding: 16px 18px;
+  text-align: left;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  vertical-align: top;
+}
+
+.table tbody tr:hover {
+  background-color: rgba(248, 250, 252, 0.7);
+}
+
+.checkboxCell {
+  width: 48px;
+  text-align: center;
+}
+
+.checkboxCell input {
+  width: 18px;
+  height: 18px;
+}
+
+.sortableHeader {
+  cursor: pointer;
+  user-select: none;
+  color: #0f172a;
   font-weight: 600;
-  margin-bottom: 12px;
+}
+
+.sortIcon {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.nameCell {
+  max-width: 340px;
+}
+
+.productName {
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+
+.productDescription {
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.typeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  background-color: rgba(14, 165, 233, 0.12);
+  border-radius: 999px;
+  font-weight: 600;
+  color: #0369a1;
+  font-size: 13px;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.statusActive {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+}
+
+.statusArchived {
+  background-color: rgba(148, 163, 184, 0.18);
+  color: #475569;
+}
+
+.dateCell {
+  white-space: nowrap;
+  color: #475569;
+}
+
+.actionsCell {
+  width: 80px;
+  text-align: right;
+}
+
+.actionButton {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 18px;
+  transition: transform 0.2s ease;
+}
+
+.actionButton:hover {
+  transform: translateY(-1px);
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+}
+
+.paginationInfo {
+  color: #475569;
+  font-size: 14px;
+}
+
+.paginationControls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.pageSizeSelector {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #475569;
+}
+
+.pageSizeSelector select {
+  border-radius: 10px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  padding: 8px 12px;
+  background-color: #fff;
+}
+
+.pageButtons {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pageButton {
+  border: none;
+  background-color: rgba(226, 232, 240, 0.9);
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.pageButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pageNumber {
+  font-weight: 600;
+  color: #334155;
 }
