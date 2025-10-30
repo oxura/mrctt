@@ -1,4 +1,5 @@
-import { pool } from '../db/client';
+import { Pool } from 'pg';
+import { pool, PoolClientLike } from '../db/client';
 import { AppError } from '../utils/appError';
 import { Form, FormField } from '../types/models';
 import crypto from 'crypto';
@@ -36,24 +37,63 @@ export interface FormsListResult {
   total_pages: number;
 }
 
-export class FormsRepository {
-  private generatePublicUrl(): string {
-    return crypto.randomBytes(16).toString('hex');
+const getDbClient = (client?: PoolClientLike): PoolClientLike | Pool => client ?? pool;
+
+class FormsRepository {
+  private async generateUniquePublicUrl(client?: PoolClientLike): Promise<string> {
+    let token: string;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      token = crypto.randomBytes(16).toString('hex');
+      const exists = await this.publicUrlExists(token, client);
+      if (!exists) {
+        return token;
+      }
+    }
   }
 
-  private generateSlug(name: string, tenantId: string): string {
+  private async generateUniqueSlug(name: string, tenantId: string, client?: PoolClientLike): Promise<string> {
     const baseSlug = name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-    
-    const randomSuffix = crypto.randomBytes(4).toString('hex');
-    return `${baseSlug}-${randomSuffix}`;
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 80);
+
+    // Ensure slug is not empty
+    const normalizedBase = baseSlug.length > 0 ? baseSlug : 'form';
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const slug = `${normalizedBase}-${crypto.randomBytes(4).toString('hex')}`;
+      const exists = await this.slugExists(tenantId, slug, client);
+      if (!exists) {
+        return slug;
+      }
+    }
   }
 
-  async create(tenantId: string, data: CreateFormDto): Promise<Form> {
-    const slug = this.generateSlug(data.name, tenantId);
-    const publicUrl = this.generatePublicUrl();
+  private async slugExists(tenantId: string, slug: string, client?: PoolClientLike): Promise<boolean> {
+    const db = getDbClient(client);
+    const result = await db.query<{ exists: boolean }>(
+      'SELECT EXISTS (SELECT 1 FROM forms WHERE tenant_id = $1 AND slug = $2) AS exists',
+      [tenantId, slug]
+    );
+    return result.rows[0]?.exists ?? false;
+  }
+
+  private async publicUrlExists(publicUrl: string, client?: PoolClientLike): Promise<boolean> {
+    const db = getDbClient(client);
+    const result = await db.query<{ exists: boolean }>(
+      'SELECT EXISTS (SELECT 1 FROM forms WHERE public_url = $1) AS exists',
+      [publicUrl]
+    );
+    return result.rows[0]?.exists ?? false;
+  }
+
+  async create(tenantId: string, data: CreateFormDto, client?: PoolClientLike): Promise<Form> {
+    const db = getDbClient(client);
+    const slug = await this.generateUniqueSlug(data.name, tenantId, client);
+    const publicUrl = await this.generateUniquePublicUrl(client);
 
     const query = `
       INSERT INTO forms (
@@ -73,7 +113,7 @@ export class FormsRepository {
       true,
     ];
 
-    const result = await pool.query(query, values);
+    const result = await db.query<Form>(query, values);
     const form = result.rows[0];
 
     return {
@@ -82,14 +122,15 @@ export class FormsRepository {
     };
   }
 
-  async findById(tenantId: string, formId: string): Promise<Form> {
+  async findById(tenantId: string, formId: string, client?: PoolClientLike): Promise<Form> {
+    const db = getDbClient(client);
     const query = `
       SELECT *
       FROM forms
       WHERE id = $1 AND tenant_id = $2
     `;
 
-    const result = await pool.query(query, [formId, tenantId]);
+    const result = await db.query<Form>(query, [formId, tenantId]);
 
     if (result.rows.length === 0) {
       throw new AppError('Form not found', 404);
@@ -102,14 +143,15 @@ export class FormsRepository {
     };
   }
 
-  async findByPublicUrl(publicUrl: string): Promise<Form> {
+  async findByPublicUrl(publicUrl: string, client?: PoolClientLike): Promise<Form> {
+    const db = getDbClient(client);
     const query = `
       SELECT *
       FROM forms
       WHERE public_url = $1 AND is_active = true
     `;
 
-    const result = await pool.query(query, [publicUrl]);
+    const result = await db.query<Form>(query, [publicUrl]);
 
     if (result.rows.length === 0) {
       throw new AppError('Form not found', 404);
@@ -122,7 +164,8 @@ export class FormsRepository {
     };
   }
 
-  async findAll(tenantId: string, filters: FormsFilter): Promise<FormsListResult> {
+  async findAll(tenantId: string, filters: FormsFilter, client?: PoolClientLike): Promise<FormsListResult> {
+    const db = getDbClient(client);
     const conditions: string[] = ['tenant_id = $1'];
     const values: any[] = [tenantId];
     let paramCount = 1;
@@ -153,7 +196,7 @@ export class FormsRepository {
       ${whereClause}
     `;
 
-    const countResult = await pool.query(countQuery, values);
+    const countResult = await db.query<{ total: string }>(countQuery, values);
     const total = parseInt(countResult.rows[0].total, 10);
 
     const sortBy = filters.sort_by || 'created_at';
@@ -176,7 +219,7 @@ export class FormsRepository {
 
     values.push(pageSize, offset);
 
-    const dataResult = await pool.query(dataQuery, values);
+    const dataResult = await db.query<Form & { product_name: string | null }>(dataQuery, values);
 
     return {
       forms: dataResult.rows.map((form) => ({
@@ -190,7 +233,8 @@ export class FormsRepository {
     };
   }
 
-  async update(tenantId: string, formId: string, data: UpdateFormDto): Promise<Form> {
+  async update(tenantId: string, formId: string, data: UpdateFormDto, client?: PoolClientLike): Promise<Form> {
+    const db = getDbClient(client);
     const fields: string[] = [];
     const values: any[] = [];
     let paramCount = 0;
@@ -226,7 +270,7 @@ export class FormsRepository {
     }
 
     if (fields.length === 0) {
-      return this.findById(tenantId, formId);
+      return this.findById(tenantId, formId, client);
     }
 
     paramCount++;
@@ -241,7 +285,7 @@ export class FormsRepository {
       RETURNING *
     `;
 
-    const result = await pool.query(query, values);
+    const result = await db.query<Form>(query, values);
 
     if (result.rows.length === 0) {
       throw new AppError('Form not found', 404);
@@ -254,21 +298,23 @@ export class FormsRepository {
     };
   }
 
-  async delete(tenantId: string, formId: string): Promise<void> {
+  async delete(tenantId: string, formId: string, client?: PoolClientLike): Promise<void> {
+    const db = getDbClient(client);
     const query = `
       DELETE FROM forms
       WHERE id = $1 AND tenant_id = $2
     `;
 
-    const result = await pool.query(query, [formId, tenantId]);
+    const result = await db.query(query, [formId, tenantId]);
 
     if (result.rowCount === 0) {
       throw new AppError('Form not found', 404);
     }
   }
 
-  async regeneratePublicUrl(tenantId: string, formId: string): Promise<Form> {
-    const publicUrl = this.generatePublicUrl();
+  async regeneratePublicUrl(tenantId: string, formId: string, client?: PoolClientLike): Promise<Form> {
+    const db = getDbClient(client);
+    const publicUrl = await this.generateUniquePublicUrl(client);
 
     const query = `
       UPDATE forms
@@ -277,7 +323,7 @@ export class FormsRepository {
       RETURNING *
     `;
 
-    const result = await pool.query(query, [publicUrl, formId, tenantId]);
+    const result = await db.query<Form>(query, [publicUrl, formId, tenantId]);
 
     if (result.rows.length === 0) {
       throw new AppError('Form not found', 404);

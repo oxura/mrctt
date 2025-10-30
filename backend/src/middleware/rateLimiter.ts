@@ -183,3 +183,61 @@ export const apiRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+export const publicFormSubmissionLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  keyGenerator: (req) => {
+    const ip = req.ip || 'unknown';
+    const publicUrl = req.params?.publicUrl || 'unknown';
+    return `public-form-submit:${ip}:${publicUrl}`;
+  },
+  message: 'Too many form submissions. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      status: 'error',
+      message: 'Too many form submissions. Please try again later.',
+      requestId: req.requestId,
+    });
+  },
+});
+
+export const publicFormGetLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  keyGenerator: (req) => {
+    const ip = req.ip || 'unknown';
+    return `public-form-get:${ip}`;
+  },
+  message: 'Too many requests. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      status: 'error',
+      message: 'Too many requests. Please try again later.',
+    });
+  },
+});
+
+export const teamInviteAcceptLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 5,
+  keyGenerator: (req) => {
+    const ip = req.ip || 'unknown';
+    const token = req.body?.token?.substring(0, 10) || 'unknown';
+    return `team-invite-accept:${ip}:${token}`;
+  },
+  message: 'Too many invite acceptance attempts. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      status: 'error',
+      message: 'Too many invite acceptance attempts. Please try again later.',
+      requestId: req.requestId,
+    });
+  },
+});

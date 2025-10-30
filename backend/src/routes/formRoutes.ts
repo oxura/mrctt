@@ -5,19 +5,48 @@ import { tenantGuard } from '../middleware/tenant';
 import { requireModule } from '../middleware/moduleGuard';
 import { requirePermission } from '../middleware/rbac';
 import { auditLog } from '../middleware/audit';
+import {
+  publicFormGetLimiter,
+  publicFormSubmissionLimiter,
+  createTenantUserLimiter,
+} from '../middleware/rateLimiter';
 
 const router = Router();
 
-router.get('/public/:publicUrl', formsController.getPublic);
-router.post('/public/:publicUrl/submit', formsController.submitPublic);
+router.get('/public/:publicUrl', publicFormGetLimiter, formsController.getPublic);
+router.post('/public/:publicUrl/submit', publicFormSubmissionLimiter, formsController.submitPublic);
 
 router.use(authenticate, tenantGuard, requireModule('forms'));
 
 router.get('/', requirePermission('forms:read'), formsController.list);
-router.post('/', requirePermission('forms:create'), auditLog('form.create', 'form'), formsController.create);
+router.post(
+  '/',
+  createTenantUserLimiter('forms-create', 30),
+  requirePermission('forms:create'),
+  auditLog('form.create', 'form'),
+  formsController.create
+);
 router.get('/:id', requirePermission('forms:read'), formsController.getOne);
-router.put('/:id', requirePermission('forms:update'), auditLog('form.update', 'form'), formsController.update);
-router.delete('/:id', requirePermission('forms:delete'), auditLog('form.delete', 'form'), formsController.delete);
-router.post('/:id/regenerate-url', requirePermission('forms:update'), auditLog('form.regenerate_url', 'form'), formsController.regeneratePublicUrl);
+router.put(
+  '/:id',
+  createTenantUserLimiter('forms-update', 50),
+  requirePermission('forms:update'),
+  auditLog('form.update', 'form'),
+  formsController.update
+);
+router.delete(
+  '/:id',
+  createTenantUserLimiter('forms-delete', 20),
+  requirePermission('forms:delete'),
+  auditLog('form.delete', 'form'),
+  formsController.delete
+);
+router.post(
+  '/:id/regenerate-url',
+  createTenantUserLimiter('forms-regenerate-url', 10),
+  requirePermission('forms:update'),
+  auditLog('form.regenerate_url', 'form'),
+  formsController.regeneratePublicUrl
+);
 
 export default router;

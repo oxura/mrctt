@@ -1,4 +1,4 @@
-import { pool } from '../db/client';
+import { pool, PoolClientLike } from '../db/client';
 import { AppError } from '../utils/appError';
 
 export interface Activity {
@@ -21,7 +21,8 @@ export interface CreateActivityInput {
 }
 
 export class ActivitiesRepository {
-  async findByLeadId(tenantId: string, leadId: string): Promise<Activity[]> {
+  async findByLeadId(tenantId: string, leadId: string, client?: PoolClientLike): Promise<Activity[]> {
+    const db = client || pool;
     const query = `
       SELECT
         la.*,
@@ -37,11 +38,12 @@ export class ActivitiesRepository {
       ORDER BY la.created_at DESC
     `;
 
-    const result = await pool.query(query, [leadId, tenantId]);
+    const result = await db.query(query, [leadId, tenantId]);
     return result.rows;
   }
 
-  async findById(tenantId: string, activityId: string): Promise<Activity> {
+  async findById(tenantId: string, activityId: string, client?: PoolClientLike): Promise<Activity> {
+    const db = client || pool;
     const query = `
       SELECT
         la.*,
@@ -56,7 +58,7 @@ export class ActivitiesRepository {
       WHERE la.id = $1 AND la.tenant_id = $2
     `;
 
-    const result = await pool.query(query, [activityId, tenantId]);
+    const result = await db.query(query, [activityId, tenantId]);
 
     if (result.rows.length === 0) {
       throw new AppError('Activity not found', 404);
@@ -69,8 +71,10 @@ export class ActivitiesRepository {
     tenantId: string,
     leadId: string,
     userId: string | null,
-    input: CreateActivityInput
+    input: CreateActivityInput,
+    client?: PoolClientLike
   ): Promise<Activity> {
+    const db = client || pool;
     const query = `
       INSERT INTO lead_activities (
         tenant_id,
@@ -84,7 +88,7 @@ export class ActivitiesRepository {
       RETURNING id
     `;
 
-    const result = await pool.query(query, [
+    const result = await db.query(query, [
       tenantId,
       leadId,
       userId,
@@ -93,7 +97,7 @@ export class ActivitiesRepository {
       JSON.stringify(input.metadata ?? {}),
     ]);
 
-    return this.findById(tenantId, result.rows[0].id);
+    return this.findById(tenantId, result.rows[0].id, client);
   }
 }
 
