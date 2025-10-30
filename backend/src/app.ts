@@ -134,8 +134,12 @@ app.use(
 
       return callback(null, false);
     },
-    credentials: (req, res) => {
-      if (req.path?.startsWith('/api/v1/forms/public')) {
+    credentials: (req) => {
+      if (
+        req.path?.startsWith('/api/v1/forms/public') ||
+        req.path === '/api/v1/health' ||
+        req.path === '/api/v1/ready'
+      ) {
         return false;
       }
       return true;
@@ -157,7 +161,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 app.use(csrfProtection);
 
-app.use('/api/v1', dbSession, routes);
+app.use('/api/v1', routes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

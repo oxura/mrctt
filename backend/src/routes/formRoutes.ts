@@ -5,6 +5,7 @@ import { tenantGuard } from '../middleware/tenant';
 import { requireModule } from '../middleware/moduleGuard';
 import { requirePermission } from '../middleware/rbac';
 import { auditLog } from '../middleware/audit';
+import { dbSession } from '../middleware/dbSession';
 import {
   publicFormGetLimiter,
   publicFormSubmissionLimiter,
@@ -16,7 +17,7 @@ const router = Router();
 router.get('/public/:publicUrl', publicFormGetLimiter, formsController.getPublic);
 router.post('/public/:publicUrl/submit', publicFormSubmissionLimiter, formsController.submitPublic);
 
-router.use(authenticate, tenantGuard, requireModule('forms'));
+router.use(authenticate, tenantGuard, dbSession, requireModule('forms'));
 
 router.get('/', requirePermission('forms:read'), formsController.list);
 router.post(

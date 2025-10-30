@@ -5,6 +5,7 @@ import { tenantGuard } from '../middleware/tenant';
 import { requirePermission } from '../middleware/rbac';
 import { auditLog } from '../middleware/audit';
 import { requireModule } from '../middleware/moduleGuard';
+import { dbSession } from '../middleware/dbSession';
 import {
   productsRateLimiter,
   productsMutationsLimiter,
@@ -13,7 +14,7 @@ import {
 
 const router = Router();
 
-router.use(authenticate, tenantGuard, requireModule('products'));
+router.use(authenticate, tenantGuard, dbSession, requireModule('products'));
 
 router.get('/', productsRateLimiter, requirePermission('products:read'), productsController.list);
 router.post(

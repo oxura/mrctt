@@ -21,12 +21,13 @@ import {
   commentsLimiter,
   tasksMutationsLimiter,
 } from '../middleware/rateLimiter';
+import { dbSession } from '../middleware/dbSession';
 import leadsRepository from '../repositories/leadsRepository';
 import tasksRepository from '../repositories/tasksRepository';
 
 const router = Router();
 
-router.use(authenticate, tenantGuard);
+router.use(authenticate, tenantGuard, dbSession);
 
 router.get(
   '/',

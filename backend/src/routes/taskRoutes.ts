@@ -9,12 +9,13 @@ import {
 } from '../middleware/rbac';
 import { requireModule } from '../middleware/moduleGuard';
 import { auditLog } from '../middleware/audit';
+import { dbSession } from '../middleware/dbSession';
 import tasksRepository from '../repositories/tasksRepository';
-import { tasksMutationsLimiter } from '../middleware/rateLimiter';
+import { taskDeleteLimiter, tasksMutationsLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
-router.use(authenticate, tenantGuard, requireModule('tasks'));
+router.use(authenticate, tenantGuard, dbSession, requireModule('tasks'));
 
 router.get(
   '/',

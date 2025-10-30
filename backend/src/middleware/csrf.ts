@@ -14,7 +14,7 @@ const CSRF_EXEMPT_PATHS = new Set([
 
 const CSRF_EXEMPT_PATTERNS = [
   /^\/api\/v1\/auth\/password\/.+$/,
-  /^\/api\/v1\/public\/forms\/.+$/,
+  /^\/api\/v1\/forms\/public\/.+$/,
 ];
 
 export const csrfProtection = (req: Request, res: Response, next: NextFunction) => {

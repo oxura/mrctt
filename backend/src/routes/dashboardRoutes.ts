@@ -3,10 +3,11 @@ import dashboardController from '../controllers/dashboardController';
 import { authenticate } from '../middleware/auth';
 import { tenantGuard } from '../middleware/tenant';
 import { requirePermission } from '../middleware/rbac';
+import { dbSession } from '../middleware/dbSession';
 
 const router = Router();
 
-router.use(authenticate, tenantGuard);
+router.use(authenticate, tenantGuard, dbSession);
 
 router.get(
   '/stats',

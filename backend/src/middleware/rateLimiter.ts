@@ -172,6 +172,10 @@ export const groupsRateLimiter = createTenantUserLimiter('groups-read', 100);
 export const groupsMutationsLimiter = createTenantUserLimiter('groups-mutations', 50);
 export const groupDeleteLimiter = createTenantUserLimiter('group-delete', 20);
 
+export const taskDeleteLimiter = createTenantUserLimiter('task-delete', 20);
+export const userDeleteLimiter = createTenantUserLimiter('user-delete', 10);
+export const formDeleteLimiter = createTenantUserLimiter('form-delete', 15);
+
 export { createTenantUserLimiter };
 
 export const apiRateLimiter = rateLimit({

@@ -25,7 +25,10 @@ const PublicForm: React.FC = () => {
     try {
       setLoading(true);
       const response = await axios.get<{ data: Form }>(
-        `${import.meta.env.VITE_API_URL}/api/v1/forms/public/${url}`
+        `${import.meta.env.VITE_API_URL}/api/v1/forms/public/${url}`,
+        {
+          withCredentials: false,
+        }
       );
       setForm(response.data.data);
     } catch (err: any) {
@@ -37,19 +40,38 @@ const PublicForm: React.FC = () => {
 
   const validateField = (field: FormField, value: any): string | null => {
     if (field.required) {
-      if (!value || (typeof value === 'string' && value.trim() === '')) {
+      if (field.type === 'dropdown') {
+        if (!value || value === '') {
+          return `Поле "${field.label}" обязательно для заполнения`;
+        }
+      } else if (field.type === 'checkbox') {
+        if (!value) {
+          return `Поле "${field.label}" обязательно для заполнения`;
+        }
+      } else if (!value || (typeof value === 'string' && value.trim() === '')) {
         return `Поле "${field.label}" обязательно для заполнения`;
       }
     }
 
-    if (value && typeof value === 'string') {
+    if (value && typeof value === 'string' && value.trim() !== '') {
+      if (field.type === 'text') {
+        if (value.length > 255) {
+          return 'Текст не должен превышать 255 символов';
+        }
+      }
       if (field.type === 'email') {
+        if (value.length > 255) {
+          return 'Email не должен превышать 255 символов';
+        }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(value)) {
           return 'Введите корректный email адрес';
         }
       }
       if (field.type === 'phone') {
+        if (value.length < 10 || value.length > 30) {
+          return 'Номер телефона должен содержать от 10 до 30 символов';
+        }
         const phoneRegex = /^[\d\s\+\-\(\)]+$/;
         if (!phoneRegex.test(value)) {
           return 'Введите корректный номер телефона';
@@ -94,6 +116,9 @@ const PublicForm: React.FC = () => {
           utm_source,
           utm_medium,
           utm_campaign,
+        },
+        {
+          withCredentials: false,
         }
       );
 
