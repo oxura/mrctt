@@ -10,11 +10,12 @@ import {
 import { requireModule } from '../middleware/moduleGuard';
 import { auditLog } from '../middleware/audit';
 import tasksRepository from '../repositories/tasksRepository';
-import { tasksMutationsLimiter } from '../middleware/rateLimiter';
+import { tasksDeleteLimiter, tasksMutationsLimiter } from '../middleware/rateLimiter';
+import { dbSession } from '../middleware/dbSession';
 
 const router = Router();
 
-router.use(authenticate, tenantGuard, requireModule('tasks'));
+router.use(authenticate, tenantGuard, dbSession, requireModule('tasks'));
 
 router.get(
   '/',
@@ -59,6 +60,7 @@ router.patch(
 router.delete(
   '/:taskId',
   tasksMutationsLimiter,
+  tasksDeleteLimiter,
   requirePermissionWithOwnership(
     'tasks:delete:all',
     'tasks:delete:own',

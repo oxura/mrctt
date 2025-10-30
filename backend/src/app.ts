@@ -26,6 +26,10 @@ app.set('trust proxy', 1);
 app.use(requestId);
 
 if (env.NODE_ENV === 'production') {
+  const allowedHosts = env.ALLOWED_HOSTS 
+    ? env.ALLOWED_HOSTS.split(',').map((host) => host.trim().toLowerCase())
+    : [];
+
   app.use((req, res, next) => {
     if (req.method === 'OPTIONS' || req.path === '/api/v1/health') {
       return next();
@@ -33,13 +37,27 @@ if (env.NODE_ENV === 'production') {
     
     const proto = req.headers['x-forwarded-proto'];
     if (proto && proto !== 'https') {
+      const host = req.headers.host;
+      
+      if (allowedHosts.length > 0) {
+        const hostWithoutPort = host?.split(':')[0].toLowerCase();
+        if (!hostWithoutPort || !allowedHosts.includes(hostWithoutPort)) {
+          logger.warn('HTTPS redirect blocked: host not in allowlist', {
+            requestId: req.requestId,
+            host,
+            allowedHosts,
+          });
+          return res.status(400).send('Host not allowed');
+        }
+      }
+
       logger.warn('Redirecting non-HTTPS request', {
         requestId: req.requestId,
         originProto: proto,
-        host: req.headers.host,
+        host,
         url: req.originalUrl,
       });
-      return res.redirect(301, `https://${req.headers.host}${req.url}`);
+      return res.redirect(301, `https://${host}${req.url}`);
     }
     next();
   });
@@ -135,7 +153,11 @@ app.use(
       return callback(null, false);
     },
     credentials: (req, res) => {
-      if (req.path?.startsWith('/api/v1/forms/public')) {
+      const publicPaths = ['/api/v1/health', '/api/v1/ready'];
+      if (
+        req.path?.startsWith('/api/v1/forms/public') ||
+        publicPaths.includes(req.path)
+      ) {
         return false;
       }
       return true;
@@ -157,7 +179,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 app.use(csrfProtection);
 
-app.use('/api/v1', dbSession, routes);
+app.use('/api/v1', routes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

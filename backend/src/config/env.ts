@@ -26,6 +26,7 @@ const envSchema = z.object({
   PUBLIC_FORM_CAPTCHA_PROVIDER: z.enum(['recaptcha', 'hcaptcha']).optional(),
   PUBLIC_FORM_CAPTCHA_SECRET: z.string().optional(),
   PUBLIC_FORM_BASE_URL: z.string().url().optional(),
+  ALLOWED_HOSTS: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

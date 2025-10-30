@@ -113,6 +113,8 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     maxAge: 24 * 60 * 60 * 1000,
   });
 
+  res.setHeader('X-CSRF-Token', csrfToken);
+
   auditService
     .record({
       tenantId: result.tenant.id,
@@ -201,11 +203,22 @@ export const refreshSession = asyncHandler(async (req: Request, res: Response) =
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
+  const csrfToken = generateCSRFToken();
+  res.cookie('csrf_token', csrfToken, {
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: 'lax' as const,
+    path: '/',
+    domain: env.COOKIE_DOMAIN ?? undefined,
+    maxAge: 24 * 60 * 60 * 1000,
+  });
+  res.setHeader('X-CSRF-Token', csrfToken);
+
   const { token: _, refreshToken: __, ...dataWithoutTokens } = result;
 
   res.status(200).json({
     status: 'success',
-    data: dataWithoutTokens,
+    data: { ...dataWithoutTokens, csrfToken },
   });
 });
 

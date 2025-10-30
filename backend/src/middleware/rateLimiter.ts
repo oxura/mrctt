@@ -163,6 +163,7 @@ export const refreshLimiter = createTenantUserLimiter('auth-refresh', 20);
 export const leadsMutationsLimiter = createTenantUserLimiter('leads-mutations', 50);
 export const commentsLimiter = createTenantUserLimiter('comments', 30);
 export const tasksMutationsLimiter = createTenantUserLimiter('tasks-mutations', 40);
+export const tasksDeleteLimiter = createTenantUserLimiter('tasks-delete', 20);
 
 export const productsRateLimiter = createTenantUserLimiter('products-read', 100);
 export const productsMutationsLimiter = createTenantUserLimiter('products-mutations', 50);
@@ -171,6 +172,9 @@ export const productDeleteLimiter = createTenantUserLimiter('product-delete', 20
 export const groupsRateLimiter = createTenantUserLimiter('groups-read', 100);
 export const groupsMutationsLimiter = createTenantUserLimiter('groups-mutations', 50);
 export const groupDeleteLimiter = createTenantUserLimiter('group-delete', 20);
+
+export const userDeleteLimiter = createTenantUserLimiter('user-delete', 10);
+export const inviteDeleteLimiter = createTenantUserLimiter('invite-delete', 20);
 
 export { createTenantUserLimiter };
 

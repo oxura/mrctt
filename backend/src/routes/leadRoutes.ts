@@ -20,13 +20,15 @@ import {
   leadsMutationsLimiter,
   commentsLimiter,
   tasksMutationsLimiter,
+  tasksDeleteLimiter,
 } from '../middleware/rateLimiter';
+import { dbSession } from '../middleware/dbSession';
 import leadsRepository from '../repositories/leadsRepository';
 import tasksRepository from '../repositories/tasksRepository';
 
 const router = Router();
 
-router.use(authenticate, tenantGuard);
+router.use(authenticate, tenantGuard, dbSession);
 
 router.get(
   '/',
@@ -194,6 +196,7 @@ router.patch(
 router.delete(
   '/:leadId/tasks/:taskId',
   tasksMutationsLimiter,
+  tasksDeleteLimiter,
   requirePermissionWithOwnership(
     'tasks:delete:all',
     'tasks:delete:own',

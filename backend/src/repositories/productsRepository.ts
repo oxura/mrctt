@@ -112,9 +112,14 @@ export class ProductsRepository {
     const total = parseInt(countResult.rows[0].total, 10);
 
     const sortBy = filters.sort_by || 'created_at';
-    const sortDirection = filters.sort_direction || 'desc';
-    const allowedSortFields = ['created_at', 'updated_at', 'name', 'price'];
-    const finalSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+    const allowedSortFields: Record<string, string> = {
+      created_at: 'created_at',
+      updated_at: 'updated_at',
+      name: 'name',
+      price: 'price',
+    };
+    const finalSortBy = allowedSortFields[sortBy] ?? 'created_at';
+    const finalSortDirection = filters.sort_direction === 'asc' ? 'ASC' : 'DESC';
 
     const page = filters.page || 1;
     const pageSize = filters.page_size || 25;
@@ -124,8 +129,8 @@ export class ProductsRepository {
       SELECT *
       FROM products
       ${whereClause}
-      ORDER BY ${finalSortBy} ${sortDirection.toUpperCase()}
-      LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+      ORDER BY ${finalSortBy} ${finalSortDirection}
+      LIMIT ${paramCount + 1} OFFSET ${paramCount + 2}
     `;
 
     values.push(pageSize, offset);

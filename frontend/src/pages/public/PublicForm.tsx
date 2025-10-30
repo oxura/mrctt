@@ -40,19 +40,32 @@ const PublicForm: React.FC = () => {
       if (!value || (typeof value === 'string' && value.trim() === '')) {
         return `Поле "${field.label}" обязательно для заполнения`;
       }
+      if (field.type === 'dropdown' && (!value || value === '')) {
+        return `Поле "${field.label}" обязательно для заполнения`;
+      }
     }
 
     if (value && typeof value === 'string') {
+      if (field.type === 'text' || field.type === 'email') {
+        if (value.length > 255) {
+          return 'Значение не должно превышать 255 символов';
+        }
+      }
+
       if (field.type === 'email') {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(value)) {
           return 'Введите корректный email адрес';
         }
       }
+
       if (field.type === 'phone') {
         const phoneRegex = /^[\d\s\+\-\(\)]+$/;
         if (!phoneRegex.test(value)) {
           return 'Введите корректный номер телефона';
+        }
+        if (value.length > 30) {
+          return 'Номер телефона не должен превышать 30 символов';
         }
       }
     }

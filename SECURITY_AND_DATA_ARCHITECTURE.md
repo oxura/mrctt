@@ -158,6 +158,9 @@ IP addresses and User-Agent strings are hashed into client fingerprints for secu
 - **Comments**: 30/min per user+tenant
 - **Tasks Mutations**: 40/min per user+tenant
 - **Lead Deletions**: 20/min per user+tenant
+- **Task Deletions**: 20/min per user+tenant
+- **User Deletions**: 10/min per user+tenant
+- **Invite Deletions**: 20/min per user+tenant
 - **Auth Refresh**: 20/min per user+tenant
 
 All limiters use tenant+user scoping (with IP fallback) to prevent cross-tenant abuse.

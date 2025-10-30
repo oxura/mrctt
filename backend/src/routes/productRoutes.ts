@@ -10,10 +10,11 @@ import {
   productsMutationsLimiter,
   productDeleteLimiter,
 } from '../middleware/rateLimiter';
+import { dbSession } from '../middleware/dbSession';
 
 const router = Router();
 
-router.use(authenticate, tenantGuard, requireModule('products'));
+router.use(authenticate, tenantGuard, dbSession, requireModule('products'));
 
 router.get('/', productsRateLimiter, requirePermission('products:read'), productsController.list);
 router.post(

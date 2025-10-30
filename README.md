@@ -212,6 +212,15 @@ The platform uses **cookie-based authentication** for enhanced security:
 4. If refresh fails, user is redirected to login
 5. Token reuse detection: All tokens in family are revoked on suspicious activity
 
+### Public Forms
+
+Public forms are served from `/api/v1/forms/public/{publicUrl}` endpoints:
+- **No credentials**: Public form endpoints do not accept or return cookies
+- **Absolute API URL**: Frontend must use the full API URL (`VITE_API_URL`) to avoid credential leakage
+- **CSRF exempt**: Public form submissions bypass CSRF protection
+- **CSP compliant**: No inline scripts or event attributes; uses strict Content Security Policy
+- **Rate limited**: IP-based rate limiting to prevent abuse
+
 ## Logging
 
 Winston logger with different transports:

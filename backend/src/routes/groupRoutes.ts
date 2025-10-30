@@ -10,10 +10,11 @@ import {
   groupsMutationsLimiter,
   groupDeleteLimiter,
 } from '../middleware/rateLimiter';
+import { dbSession } from '../middleware/dbSession';
 
 const router = Router();
 
-router.use(authenticate, tenantGuard, requireModule('groups'));
+router.use(authenticate, tenantGuard, dbSession, requireModule('groups'));
 
 router.get('/', groupsRateLimiter, requirePermission('groups:read'), groupsController.list);
 router.post(

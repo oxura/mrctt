@@ -33,7 +33,7 @@ export const leadsListQuerySchema = z.object({
   assigned_to: z.string().uuid('assigned_to must be a valid UUID').optional(),
   product_id: z.string().uuid('product_id must be a valid UUID').optional(),
   search: z.string().max(255, 'Search term must be 255 characters or less').optional(),
-  sort_by: z.enum(['created_at', 'updated_at', 'status', 'first_name', 'last_name']).optional(),
+  sort_by: z.enum(['created_at', 'updated_at', 'status', 'first_name', 'last_name', 'email', 'product_name']).optional(),
   sort_direction: z.enum(['asc', 'desc']).optional(),
   page: z.coerce.number().int().min(1, 'Page must be at least 1').optional(),
   page_size: z.coerce.number().int().min(1, 'Page size must be at least 1').max(100, 'Page size must not exceed 100').optional(),
