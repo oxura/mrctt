@@ -115,4 +115,75 @@ export class TenantService {
 
     return updatedTenant;
   }
+
+  async updateSettings(
+    tenantId: string,
+    data: {
+      name?: string;
+      logo_url?: string | null;
+      currency?: string;
+      modules?: Record<string, boolean>;
+      lead_statuses?: Array<{
+        key: string;
+        label: string;
+        color: string;
+        order: number;
+      }>;
+    }
+  ) {
+    const tenant = await this.tenantRepo.findById(tenantId);
+
+    if (!tenant) {
+      throw new AppError('Tenant not found', 404);
+    }
+
+    const currentSettings = (tenant.settings || {}) as TenantSettings;
+
+    const newSettings: TenantSettings = {
+      ...currentSettings,
+    };
+
+    if (data.modules !== undefined) {
+      const sanitizedModules = moduleKeys.reduce((acc, key) => {
+        acc[key] = Boolean(data.modules?.[key]);
+        return acc;
+      }, {} as ModuleSettings);
+      newSettings.modules = sanitizedModules;
+    }
+
+    if (data.lead_statuses !== undefined) {
+      const uniqueStatuses = new Map<string, (typeof data.lead_statuses)[number]>();
+      for (const status of data.lead_statuses) {
+        if (!uniqueStatuses.has(status.key)) {
+          uniqueStatuses.set(status.key, status);
+        }
+      }
+      newSettings.lead_statuses = Array.from(uniqueStatuses.values()).sort((a, b) => a.order - b.order);
+    }
+
+    const updateData: {
+      name?: string;
+      logo_url?: string | null;
+      currency?: string;
+      settings: TenantSettings;
+    } = {
+      settings: newSettings,
+    };
+
+    if (data.name !== undefined) {
+      updateData.name = data.name;
+    }
+
+    if (data.logo_url !== undefined) {
+      updateData.logo_url = data.logo_url;
+    }
+
+    if (data.currency !== undefined) {
+      updateData.currency = data.currency.toUpperCase();
+    }
+
+    const updatedTenant = await this.tenantRepo.update(tenantId, updateData);
+
+    return updatedTenant;
+  }
 }

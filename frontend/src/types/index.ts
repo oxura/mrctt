@@ -26,9 +26,17 @@ export interface TenantSettingsOnboarding {
   completedAt?: string;
 }
 
+export interface TenantLeadStatus {
+  key: string;
+  label: string;
+  color: string;
+  order: number;
+}
+
 export interface TenantSettings {
   modules?: TenantSettingsModules;
   onboarding?: TenantSettingsOnboarding;
+  lead_statuses?: TenantLeadStatus[];
   [key: string]: unknown;
 }
 

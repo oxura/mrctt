@@ -132,4 +132,12 @@
   --z-popover: 1060;
   --z-tooltip: 1070;
   --z-toast: 1080;
+
+  /* Aliases for backward compatibility */
+  --text-primary-color: var(--text-primary);
+  --text-secondary-color: var(--text-secondary);
+  --border-color: var(--border-light);
+  --surface-color: var(--bg-primary);
+  --background-color: var(--bg-secondary);
+  --accent-color: var(--color-primary-600);
 }

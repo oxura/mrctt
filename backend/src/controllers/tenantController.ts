@@ -22,6 +22,21 @@ const updateOnboardingSchema = z.object({
   modules: z.array(z.string()).optional(),
 });
 
+const leadStatusSchema = z.object({
+  key: z.string().min(1, 'Status key is required'),
+  label: z.string().min(1, 'Status label is required'),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex color'),
+  order: z.number().int().min(0),
+});
+
+const updateSettingsSchema = z.object({
+  name: z.string().min(1).optional(),
+  logo_url: z.string().nullable().optional(),
+  currency: z.string().min(3).max(3).optional(),
+  modules: z.record(z.boolean()).optional(),
+  lead_statuses: z.array(leadStatusSchema).optional(),
+});
+
 export const getCurrentTenant = asyncHandler(async (req: Request, res: Response) => {
   if (!req.tenantId) {
     throw new AppError('Tenant not resolved', 400);
@@ -56,6 +71,25 @@ export const updateCurrentTenantOnboarding = asyncHandler(async (req: Request, r
   }
 
   const tenant = await tenantService.updateOnboarding(req.tenantId, parsed.data);
+
+  res.status(200).json({
+    status: 'success',
+    data: { tenant },
+  });
+});
+
+export const updateCurrentTenantSettings = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.tenantId) {
+    throw new AppError('Tenant not resolved', 400);
+  }
+
+  const parsed = updateSettingsSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    throw new AppError('Validation failed', 400, parsed.error.flatten().fieldErrors);
+  }
+
+  const tenant = await tenantService.updateSettings(req.tenantId, parsed.data);
 
   res.status(200).json({
     status: 'success',

@@ -1,0 +1,126 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title {
+  margin: 0;
+  font-size: 20px;
+  color: var(--text-primary-color);
+}
+
+.description {
+  margin: 0;
+  color: var(--text-secondary-color);
+  font-size: 14px;
+}
+
+.statusesList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.statusItem {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--surface-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.statusOrder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.orderButton {
+  border: none;
+  background: none;
+  color: var(--text-secondary-color);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.orderButton:not(:disabled):hover {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--accent-color);
+}
+
+.orderButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.orderNumber {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-secondary-color);
+}
+
+.statusFields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.statusField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.statusField label {
+  font-weight: 500;
+  color: var(--text-primary-color);
+  font-size: 14px;
+}
+
+.colorInput {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.colorPicker {
+  width: 48px;
+  height: 38px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.deleteButton {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 20px;
+  color: #ef4444;
+  transition: transform 0.2s ease;
+}
+
+.deleteButton:hover {
+  transform: scale(1.1);
+}
+
+.actions {
+  margin-top: 8px;
+}

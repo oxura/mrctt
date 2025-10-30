@@ -14,9 +14,17 @@ export interface TenantSettingsOnboarding {
   [key: string]: unknown;
 }
 
+export interface TenantLeadStatusSetting {
+  key: string;
+  label: string;
+  color: string;
+  order: number;
+}
+
 export interface TenantSettings extends Record<string, unknown> {
   modules?: TenantSettingsModules;
   onboarding?: TenantSettingsOnboarding;
+  lead_statuses?: TenantLeadStatusSetting[];
 }
 
 export interface Tenant {

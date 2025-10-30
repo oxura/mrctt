@@ -40,3 +40,8 @@ export type { SpinnerProps } from './Spinner';
 
 export { default as Divider } from './Divider';
 export type { DividerProps } from './Divider';
+
+export { default as Tabs } from './Tabs';
+export type { Tab } from './Tabs';
+
+export { default as Toggle } from './Toggle';
