@@ -23,6 +23,9 @@ const envSchema = z.object({
   EMAIL_PASSWORD: z.string().optional(),
   EMAIL_FROM_ADDRESS: z.string().optional(),
   EMAIL_FROM_NAME: z.string().default('Экосистема заявок'),
+  PUBLIC_FORM_CAPTCHA_PROVIDER: z.enum(['recaptcha', 'hcaptcha']).optional(),
+  PUBLIC_FORM_CAPTCHA_SECRET: z.string().optional(),
+  PUBLIC_FORM_BASE_URL: z.string().url().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

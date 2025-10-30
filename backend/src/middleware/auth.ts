@@ -59,6 +59,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     }
 
     req.user = user;
+    req.userId = user.id;
 
     const permissions = await permissionRepo.getPermissionsByUserId(req.user.id);
     req.permissions = permissions.map((permission) => permission.name);

@@ -69,7 +69,12 @@ const normalizeOrigin = (origin: string): string => {
   }
 };
 
-const rawFrontendOrigins = [env.FRONTEND_URL, env.FRONTEND_URLS, env.FRONTEND_ORIGINS]
+const rawFrontendOrigins = [
+  env.FRONTEND_URL,
+  env.FRONTEND_URLS,
+  env.FRONTEND_ORIGINS,
+  env.PUBLIC_FORM_BASE_URL,
+]
   .filter(Boolean)
   .flatMap((value) =>
     (value as string).split(',').map((origin) => origin.trim()).filter((origin) => origin.length > 0)
@@ -129,7 +134,12 @@ app.use(
 
       return callback(null, false);
     },
-    credentials: true,
+    credentials: (req, res) => {
+      if (req.path?.startsWith('/api/v1/forms/public')) {
+        return false;
+      }
+      return true;
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
@@ -138,7 +148,7 @@ app.use(
       'X-Tenant-ID',
       'X-Request-ID',
     ],
-    exposedHeaders: ['X-Request-ID', 'X-CSRF-Token'],
+    exposedHeaders: ['X-Request-ID', 'X-CSRF-Token', 'RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset'],
   })
 );
 app.use(cookieParser());

@@ -1,3 +1,4 @@
+import { PoolClientLike } from '../db/client';
 import formsRepository, {
   CreateFormDto,
   UpdateFormDto,
@@ -7,13 +8,19 @@ import formsRepository, {
 import { Form, FormField } from '../types/models';
 import leadsRepository, { CreateLeadDto } from '../repositories/leadsRepository';
 import activitiesRepository from '../repositories/activitiesRepository';
+import formSubmissionsRepository from '../repositories/formSubmissionsRepository';
 import { AppError } from '../utils/appError';
+import logger from '../utils/logger';
+import { verifyCaptcha } from './captchaService';
 
 export interface SubmitFormDto {
   values: Record<string, any>;
   utm_source?: string | null;
   utm_medium?: string | null;
   utm_campaign?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  captcha_token?: string | null;
 }
 
 const normalizeLabel = (label: string): string => label.toLowerCase().trim();
@@ -25,38 +32,52 @@ const isEmptyValue = (value: unknown): boolean => {
   return false;
 };
 
+const sanitizeUtmParam = (param: string | null | undefined): string | null => {
+  if (!param) return null;
+  const trimmed = param.trim();
+  if (trimmed.length === 0 || trimmed.length > 100) return null;
+  return trimmed;
+};
+
 class FormsService {
-  async createForm(tenantId: string, userId: string, data: CreateFormDto): Promise<Form> {
-    const form = await formsRepository.create(tenantId, data);
+  async createForm(tenantId: string, userId: string, data: CreateFormDto, client?: PoolClientLike): Promise<Form> {
+    const form = await formsRepository.create(tenantId, data, client);
     return form;
   }
 
-  async getForm(tenantId: string, formId: string): Promise<Form> {
-    return formsRepository.findById(tenantId, formId);
+  async getForm(tenantId: string, formId: string, client?: PoolClientLike): Promise<Form> {
+    return formsRepository.findById(tenantId, formId, client);
   }
 
-  async getPublicForm(publicUrl: string): Promise<Form> {
-    return formsRepository.findByPublicUrl(publicUrl);
+  async getPublicForm(publicUrl: string, client?: PoolClientLike): Promise<Form> {
+    return formsRepository.findByPublicUrl(publicUrl, client);
   }
 
-  async listForms(tenantId: string, filters: FormsFilter): Promise<FormsListResult> {
-    return formsRepository.findAll(tenantId, filters);
+  async listForms(tenantId: string, filters: FormsFilter, client?: PoolClientLike): Promise<FormsListResult> {
+    return formsRepository.findAll(tenantId, filters, client);
   }
 
-  async updateForm(tenantId: string, formId: string, data: UpdateFormDto): Promise<Form> {
-    return formsRepository.update(tenantId, formId, data);
+  async updateForm(tenantId: string, formId: string, data: UpdateFormDto, client?: PoolClientLike): Promise<Form> {
+    return formsRepository.update(tenantId, formId, data, client);
   }
 
-  async deleteForm(tenantId: string, formId: string): Promise<void> {
-    await formsRepository.delete(tenantId, formId);
+  async deleteForm(tenantId: string, formId: string, client?: PoolClientLike): Promise<void> {
+    await formsRepository.delete(tenantId, formId, client);
   }
 
-  async regeneratePublicUrl(tenantId: string, formId: string): Promise<Form> {
-    return formsRepository.regeneratePublicUrl(tenantId, formId);
+  async regeneratePublicUrl(tenantId: string, formId: string, client?: PoolClientLike): Promise<Form> {
+    return formsRepository.regeneratePublicUrl(tenantId, formId, client);
   }
 
-  async submitPublicForm(publicUrl: string, data: SubmitFormDto): Promise<{ success: true; lead_id: string }> {
-    const form = await formsRepository.findByPublicUrl(publicUrl);
+  async submitPublicForm(
+    publicUrl: string,
+    data: SubmitFormDto,
+    requestId?: string,
+    client?: PoolClientLike
+  ): Promise<{ success: true; lead_id: string }> {
+    const form = await formsRepository.findByPublicUrl(publicUrl, client);
+
+    await verifyCaptcha(data.captcha_token, data.ip_address);
 
     const fieldErrors: Record<string, string> = {};
 
@@ -79,6 +100,14 @@ class FormsService {
     });
 
     if (Object.keys(fieldErrors).length > 0) {
+      logger.warn('Public form submission validation failed', {
+        requestId,
+        formId: form.id,
+        tenantId: form.tenant_id,
+        publicUrl,
+        fieldErrors,
+        ipAddress: data.ip_address,
+      });
       throw new AppError('Validation failed', 400, { fields: fieldErrors });
     }
 
@@ -142,27 +171,53 @@ class FormsService {
       email,
       phone,
       source: 'public_form',
-      utm_source: data.utm_source?.trim() || null,
-      utm_medium: data.utm_medium?.trim() || null,
-      utm_campaign: data.utm_campaign?.trim() || null,
+      utm_source: sanitizeUtmParam(data.utm_source),
+      utm_medium: sanitizeUtmParam(data.utm_medium),
+      utm_campaign: sanitizeUtmParam(data.utm_campaign),
       custom_fields: customFields,
     };
 
-    const lead = await leadsRepository.create(form.tenant_id, leadData);
+    const lead = await leadsRepository.create(form.tenant_id, leadData, client);
 
-    await activitiesRepository.create(form.tenant_id, lead.id, null, {
-      activity_type: 'lead_created_via_form',
-      description: 'Лид создан через форму',
-      metadata: {
+    await formSubmissionsRepository.create(
+      {
+        tenant_id: form.tenant_id,
         form_id: form.id,
-        form_name: form.name,
-        public_url: publicUrl,
+        lead_id: lead.id,
+        data: data.values,
+        ip_address: data.ip_address || null,
+        user_agent: data.user_agent || null,
       },
+      client
+    );
+
+    await activitiesRepository.create(
+      form.tenant_id,
+      lead.id,
+      null,
+      {
+        activity_type: 'lead_created_via_form',
+        description: 'Лид создан через форму',
+        metadata: {
+          form_id: form.id,
+          form_name: form.name,
+          public_url: publicUrl,
+        },
+      },
+      client
+    );
+
+    logger.info('Public form submission successful', {
+      requestId,
+      formId: form.id,
+      leadId: lead.id,
+      tenantId: form.tenant_id,
+      publicUrl,
+      ipAddress: data.ip_address,
     });
 
     return { success: true, lead_id: lead.id };
   }
 }
-
 
 export default new FormsService();
