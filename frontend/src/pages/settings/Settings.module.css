@@ -4,22 +4,24 @@
   gap: 24px;
 }
 
-.placeholder {
-  background-color: #fff;
-  border-radius: 16px;
-  padding: 32px;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.placeholder p {
+.header h1 {
   margin: 0;
-  color: #475569;
+  font-size: 28px;
+  color: var(--text-primary-color);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--text-secondary-color);
   font-size: 15px;
 }
 
-.placeholder p:first-child {
-  font-size: 17px;
-  font-weight: 600;
-  margin-bottom: 12px;
+.tabContent {
+  margin-top: 16px;
 }

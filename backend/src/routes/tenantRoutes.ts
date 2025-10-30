@@ -3,6 +3,7 @@ import {
   getCurrentTenant,
   listTenants,
   updateCurrentTenantOnboarding,
+  updateCurrentTenantSettings,
 } from '../controllers/tenantController';
 import { authenticate } from '../middleware/auth';
 import { tenantGuard } from '../middleware/tenant';
@@ -19,6 +20,14 @@ router.patch(
   requirePermission('tenants:update'),
   auditLog('tenant.onboarding.update', 'tenant'),
   updateCurrentTenantOnboarding
+);
+router.put(
+  '/current/settings',
+  authenticate,
+  tenantGuard,
+  requirePermission('tenants:update'),
+  auditLog('tenant.settings.update', 'tenant'),
+  updateCurrentTenantSettings
 );
 router.get('/', authenticate, requirePermission('tenants:list'), listTenants);
 
