@@ -37,10 +37,10 @@ export interface FormsListResult {
   total_pages: number;
 }
 
-const getDbClient = (client?: PoolClientLikeLike): PoolClientLike | Pool => client ?? pool;
+const getDbClient = (client?: PoolClientLike): PoolClientLike | Pool => client ?? pool;
 
 class FormsRepository {
-  private async generateUniquePublicUrl(client?: PoolClientLikeLike): Promise<string> {
+  private async generateUniquePublicUrl(client?: PoolClientLike): Promise<string> {
     let token: string;
     // eslint-disable-next-line no-constant-condition
     while (true) {

@@ -1,4 +1,4 @@
-import { pool } from '../db/client';
+import { pool, PoolClientLike } from '../db/client';
 import { AppError } from '../utils/appError';
 
 export interface Comment {
@@ -21,19 +21,22 @@ export class CommentsRepository {
     tenantId: string,
     leadId: string,
     userId: string,
-    data: CreateCommentDto
+    data: CreateCommentDto,
+    client?: PoolClientLike
   ): Promise<Comment> {
+    const db = client || pool;
     const query = `
       INSERT INTO lead_comments (tenant_id, lead_id, user_id, content)
       VALUES ($1, $2, $3, $4)
       RETURNING *
     `;
 
-    const result = await pool.query(query, [tenantId, leadId, userId, data.content]);
-    return this.findById(tenantId, result.rows[0].id);
+    const result = await db.query(query, [tenantId, leadId, userId, data.content]);
+    return this.findById(tenantId, result.rows[0].id, client);
   }
 
-  async findById(tenantId: string, commentId: string): Promise<Comment> {
+  async findById(tenantId: string, commentId: string, client?: PoolClientLike): Promise<Comment> {
+    const db = client || pool;
     const query = `
       SELECT
         lc.*,
@@ -48,7 +51,7 @@ export class CommentsRepository {
       WHERE lc.id = $1 AND lc.tenant_id = $2
     `;
 
-    const result = await pool.query(query, [commentId, tenantId]);
+    const result = await db.query(query, [commentId, tenantId]);
 
     if (result.rows.length === 0) {
       throw new AppError('Comment not found', 404);
@@ -57,7 +60,8 @@ export class CommentsRepository {
     return result.rows[0];
   }
 
-  async findByLeadId(tenantId: string, leadId: string): Promise<Comment[]> {
+  async findByLeadId(tenantId: string, leadId: string, client?: PoolClientLike): Promise<Comment[]> {
+    const db = client || pool;
     const query = `
       SELECT
         lc.*,
@@ -73,7 +77,7 @@ export class CommentsRepository {
       ORDER BY lc.created_at DESC
     `;
 
-    const result = await pool.query(query, [leadId, tenantId]);
+    const result = await db.query(query, [leadId, tenantId]);
     return result.rows;
   }
 }

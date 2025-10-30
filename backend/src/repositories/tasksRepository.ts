@@ -1,4 +1,4 @@
-import { pool } from '../db/client';
+import { pool, PoolClientLike } from '../db/client';
 import { AppError } from '../utils/appError';
 
 export interface Task {
@@ -40,7 +40,8 @@ export interface UpdateTaskDto {
 }
 
 export class TasksRepository {
-  async create(tenantId: string, data: CreateTaskDto, userId: string): Promise<Task> {
+  async create(tenantId: string, data: CreateTaskDto, userId: string, client?: PoolClientLike): Promise<Task> {
+    const db = client || pool;
     const query = `
       INSERT INTO tasks (
         tenant_id, lead_id, assigned_to, created_by,
@@ -60,18 +61,19 @@ export class TasksRepository {
       data.priority || 'medium',
     ];
 
-    const result = await pool.query(query, values);
-    return this.findById(tenantId, result.rows[0].id);
+    const result = await db.query(query, values);
+    return this.findById(tenantId, result.rows[0].id, client);
   }
 
-  async getOwnerIdIfExists(tenantId: string, taskId: string): Promise<string | null> {
+  async getOwnerIdIfExists(tenantId: string, taskId: string, client?: PoolClientLike): Promise<string | null> {
+    const db = client || pool;
     const query = `
       SELECT assigned_to
       FROM tasks
       WHERE id = $1 AND tenant_id = $2
     `;
 
-    const result = await pool.query(query, [taskId, tenantId]);
+    const result = await db.query(query, [taskId, tenantId]);
 
     if (result.rows.length === 0) {
       return null;
@@ -80,7 +82,8 @@ export class TasksRepository {
     return result.rows[0].assigned_to || null;
   }
 
-  async findById(tenantId: string, taskId: string): Promise<Task> {
+  async findById(tenantId: string, taskId: string, client?: PoolClientLike): Promise<Task> {
+    const db = client || pool;
     const query = `
       SELECT
         t.*,
@@ -100,7 +103,7 @@ export class TasksRepository {
       WHERE t.id = $1 AND t.tenant_id = $2
     `;
 
-    const result = await pool.query(query, [taskId, tenantId]);
+    const result = await db.query(query, [taskId, tenantId]);
 
     if (result.rows.length === 0) {
       throw new AppError('Task not found', 404);
@@ -109,7 +112,8 @@ export class TasksRepository {
     return result.rows[0];
   }
 
-  async findByLeadId(tenantId: string, leadId: string): Promise<Task[]> {
+  async findByLeadId(tenantId: string, leadId: string, client?: PoolClientLike): Promise<Task[]> {
+    const db = client || pool;
     const query = `
       SELECT
         t.*,
@@ -133,11 +137,12 @@ export class TasksRepository {
         t.created_at DESC
     `;
 
-    const result = await pool.query(query, [leadId, tenantId]);
+    const result = await db.query(query, [leadId, tenantId]);
     return result.rows;
   }
 
-  async update(tenantId: string, taskId: string, data: UpdateTaskDto): Promise<Task> {
+  async update(tenantId: string, taskId: string, data: UpdateTaskDto, client?: PoolClientLike): Promise<Task> {
+    const db = client || pool;
     const fields: string[] = [];
     const values: any[] = [];
     let paramCount = 0;
@@ -189,7 +194,7 @@ export class TasksRepository {
     }
 
     if (fields.length === 0) {
-      return this.findById(tenantId, taskId);
+      return this.findById(tenantId, taskId, client);
     }
 
     paramCount++;
@@ -204,17 +209,18 @@ export class TasksRepository {
       RETURNING *
     `;
 
-    await pool.query(query, [...values, taskId, tenantId]);
-    return this.findById(tenantId, taskId);
+    await db.query(query, [...values, taskId, tenantId]);
+    return this.findById(tenantId, taskId, client);
   }
 
-  async delete(tenantId: string, taskId: string): Promise<void> {
+  async delete(tenantId: string, taskId: string, client?: PoolClientLike): Promise<void> {
+    const db = client || pool;
     const query = `
       DELETE FROM tasks
       WHERE id = $1 AND tenant_id = $2
     `;
 
-    const result = await pool.query(query, [taskId, tenantId]);
+    const result = await db.query(query, [taskId, tenantId]);
 
     if (result.rowCount === 0) {
       throw new AppError('Task not found', 404);
@@ -229,8 +235,10 @@ export class TasksRepository {
       dateFrom?: Date | string;
       dateTo?: Date | string;
       leadId?: string;
-    }
+    },
+    client?: PoolClientLike
   ): Promise<Task[]> {
+    const db = client || pool;
     const whereConditions = ['t.tenant_id = $1'];
     const values: any[] = [tenantId];
     let paramCount = 1;
@@ -295,15 +303,17 @@ export class TasksRepository {
         t.created_at DESC
     `;
 
-    const result = await pool.query(query, values);
+    const result = await db.query(query, values);
     return result.rows;
   }
 
   async findByDateRange(
     tenantId: string,
     dateFrom: Date | string,
-    dateTo: Date | string
+    dateTo: Date | string,
+    client?: PoolClientLike
   ): Promise<Task[]> {
+    const db = client || pool;
     const query = `
       SELECT
         t.*,
@@ -330,11 +340,12 @@ export class TasksRepository {
       ORDER BY t.due_date ASC
     `;
 
-    const result = await pool.query(query, [tenantId, dateFrom, dateTo]);
+    const result = await db.query(query, [tenantId, dateFrom, dateTo]);
     return result.rows;
   }
 
-  async findOverdue(tenantId: string, userId?: string): Promise<Task[]> {
+  async findOverdue(tenantId: string, userId?: string, client?: PoolClientLike): Promise<Task[]> {
+    const db = client || pool;
     const whereConditions = [
       't.tenant_id = $1',
       't.is_completed = false',
@@ -370,11 +381,12 @@ export class TasksRepository {
       ORDER BY t.due_date ASC
     `;
 
-    const result = await pool.query(query, values);
+    const result = await db.query(query, values);
     return result.rows;
   }
 
-  async createStandalone(tenantId: string, data: CreateTaskDto, userId: string): Promise<Task> {
+  async createStandalone(tenantId: string, data: CreateTaskDto, userId: string, client?: PoolClientLike): Promise<Task> {
+    const db = client || pool;
     const query = `
       INSERT INTO tasks (
         tenant_id, lead_id, assigned_to, created_by,
@@ -394,8 +406,8 @@ export class TasksRepository {
       data.priority || 'medium',
     ];
 
-    const result = await pool.query(query, values);
-    return this.findById(tenantId, result.rows[0].id);
+    const result = await db.query(query, values);
+    return this.findById(tenantId, result.rows[0].id, client);
   }
 }
 
