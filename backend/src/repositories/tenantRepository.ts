@@ -18,6 +18,8 @@ type TenantUpdateInput = {
   city?: string | null;
   industry?: string | null;
   settings?: Record<string, unknown>;
+  subscription_status?: string;
+  subscription_expires_at?: string | null;
 };
 
 export class TenantRepository {
@@ -85,6 +87,12 @@ export class TenantRepository {
     }
     if (data.settings !== undefined) {
       pushField('settings', data.settings);
+    }
+    if (data.subscription_status !== undefined) {
+      pushField('subscription_status', data.subscription_status);
+    }
+    if (data.subscription_expires_at !== undefined) {
+      pushField('subscription_expires_at', data.subscription_expires_at);
     }
 
     if (fields.length === 0) {

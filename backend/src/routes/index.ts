@@ -11,6 +11,7 @@ import groupRoutes from './groupRoutes';
 import formRoutes from './formRoutes';
 import healthRoutes from './healthRoutes';
 import searchRoutes from './searchRoutes';
+import billingRoutes from './billingRoutes';
 import { productGroupsForProductRouter, productGroupRouter } from './productGroupsRoutes';
 import { authenticate } from '../middleware/auth';
 import { tenantGuard } from '../middleware/tenant';
@@ -31,5 +32,6 @@ router.use('/product-groups', authenticate, tenantGuard, productGroupRouter);
 router.use('/groups', groupRoutes);
 router.use('/forms', formRoutes);
 router.use('/search', searchRoutes);
+router.use('/billing', billingRoutes);
 
 export default router;

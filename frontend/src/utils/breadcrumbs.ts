@@ -8,6 +8,8 @@ export const getBreadcrumbs = (pathname: string): string[] => {
     '/tasks': ['Задачи'],
     '/team': ['Команда'],
     '/settings': ['Настройки'],
+    '/billing': ['Биллинг'],
+    '/billing/plans': ['Биллинг', 'Выбор тарифа'],
     '/profile': ['Профиль'],
     '/notifications': ['Уведомления'],
     '/onboarding': ['Настройка'],

@@ -90,3 +90,52 @@ export interface Group {
   updated_at: string;
   product_name?: string | null;
 }
+
+export type BillingPeriod = 'monthly' | 'yearly';
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description?: string | null;
+  price: string;
+  currency: string;
+  billing_period: BillingPeriod;
+  features: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SubscriptionStatus = 'trial' | 'active' | 'cancelled' | 'expired' | 'past_due';
+
+export interface Subscription {
+  id: string;
+  tenant_id: string;
+  plan_id: string;
+  status: SubscriptionStatus;
+  current_period_start: string;
+  current_period_end: string;
+  trial_ends_at?: string | null;
+  cancelled_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  plan?: SubscriptionPlan;
+}
+
+export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
+
+export interface Payment {
+  id: string;
+  tenant_id: string;
+  subscription_id?: string | null;
+  amount: string;
+  currency: string;
+  status: PaymentStatus;
+  payment_method?: string | null;
+  transaction_id?: string | null;
+  invoice_url?: string | null;
+  description?: string | null;
+  paid_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}

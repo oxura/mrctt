@@ -1,0 +1,198 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 12px 0;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.plansGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+.planCard {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.planCard:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 45px -20px rgba(15, 23, 42, 0.3);
+}
+
+.planCardPopular {
+  border: 2px solid #2563eb;
+  box-shadow: 0 20px 45px -20px rgba(37, 99, 235, 0.4);
+}
+
+.popularBadge {
+  position: absolute;
+  top: -14px;
+  right: 24px;
+  background: #2563eb;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.planHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.planName {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.planDescription {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.planPrice {
+  font-size: 36px;
+  font-weight: 700;
+  color: #2563eb;
+  margin: 0;
+}
+
+.planPrice span {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.planFeatures {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.planFeatures li {
+  font-size: 14px;
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planFeatures li:before {
+  content: '✓';
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.planFooter {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.button {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.buttonPrimary {
+  background: #2563eb;
+  color: white;
+}
+
+.buttonPrimary:hover {
+  background: #1d4ed8;
+}
+
+.buttonSecondary {
+  background: white;
+  color: #2563eb;
+  border: 1px solid #2563eb;
+}
+
+.buttonSecondary:hover {
+  background: #f0f5ff;
+}
+
+.payButton {
+  background: #16a34a;
+  color: white;
+}
+
+.payButton:hover {
+  background: #15803d;
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #2563eb;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 24px;
+}
+
+.backButton span {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.loading,
+.errorState,
+.successState {
+  text-align: center;
+  padding: 48px 24px;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+.errorState {
+  color: #dc2626;
+}
+
+.successState {
+  color: #16a34a;
+}

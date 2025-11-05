@@ -22,6 +22,8 @@ import Profile from './pages/profile/Profile';
 import Notifications from './pages/notifications/Notifications';
 import ComponentsDemo from './pages/components-demo/ComponentsDemo';
 import PublicForm from './pages/public/PublicForm';
+import Billing from './pages/billing/Billing';
+import Plans from './pages/billing/Plans';
 import { useAuthStore } from './store/authStore';
 
 const App: React.FC = () => {
@@ -49,6 +51,8 @@ const App: React.FC = () => {
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/team" element={<Team />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/billing" element={<Billing />} />
+        <Route path="/billing/plans" element={<Plans />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/onboarding" element={<OnboardingWizard />} />
