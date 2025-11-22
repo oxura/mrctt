@@ -65,6 +65,39 @@ export class UserRepository {
     return result.rows[0] as User;
   }
 
+  async update(
+    userId: string,
+    data: Partial<User>,
+    client: PoolClientLike = pool
+  ): Promise<User | null> {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (data.first_name !== undefined) {
+      fields.push(`first_name = $${idx++}`);
+      values.push(data.first_name);
+    }
+    if (data.last_name !== undefined) {
+      fields.push(`last_name = $${idx++}`);
+      values.push(data.last_name);
+    }
+    if (data.google_calendar_link !== undefined) {
+      fields.push(`google_calendar_link = $${idx++}`);
+      values.push(data.google_calendar_link);
+    }
+
+    if (fields.length === 0) {
+      return this.findById(userId, client);
+    }
+
+    values.push(userId);
+    const query = `UPDATE users SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING *`;
+
+    const result = await client.query(query, values);
+    return (result.rows[0] as User) || null;
+  }
+
   async updateLastLogin(userId: string, client: PoolClientLike = pool): Promise<void> {
     await client.query('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [
       userId,

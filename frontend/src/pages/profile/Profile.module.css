@@ -17,6 +17,7 @@
   align-items: center;
   gap: 18px;
   margin-bottom: 28px;
+  position: relative;
 }
 
 .avatar {
@@ -49,21 +50,85 @@
   color: #3b82f6;
 }
 
-.placeholder {
-  background-color: rgba(248, 250, 252, 0.8);
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px dashed rgba(148, 163, 184, 0.6);
+.editButton {
+  margin-left: auto;
+  padding: 8px 16px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.editButton:hover {
+  background: #e2e8f0;
 }
 
-.placeholder p {
-  margin: 0;
-  color: #475569;
-  font-size: 15px;
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 600px;
 }
 
-.placeholder p:first-child {
-  font-size: 18px;
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formGroup label {
   font-weight: 600;
-  margin-bottom: 12px;
+  color: #374151;
+}
+
+.formGroup input {
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.formGroup small {
+  color: #6b7280;
+  font-size: 12px;
+  white-space: pre-line;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.actions button {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actions button[type="submit"] {
+  background: #3b82f6;
+  color: white;
+  border: none;
+}
+.actions button[type="submit"]:disabled {
+  opacity: 0.7;
+}
+
+.actions button[type="button"] {
+  background: white;
+  border: 1px solid #d1d5db;
+}
+
+.error {
+  color: #ef4444;
+  font-size: 14px;
+}
+
+.details {
+  margin-top: 20px;
+  padding: 20px;
+  background: #f8fafc;
+  border-radius: 12px;
 }

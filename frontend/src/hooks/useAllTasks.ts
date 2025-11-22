@@ -78,6 +78,16 @@ export const useAllTasks = (filters?: TaskFilters) => {
     }
   };
 
+  const fetchGoogleEvents = async (): Promise<any[]> => {
+    try {
+      const response = await api.get('/api/v1/calendar/google');
+      return response.data.data;
+    } catch (err: any) {
+      console.error('Failed to fetch Google events', err);
+      return [];
+    }
+  };
+
   const createTask = async (data: CreateTaskDto): Promise<Task> => {
     try {
       const response = await api.post('/api/v1/tasks', data);
@@ -118,6 +128,7 @@ export const useAllTasks = (filters?: TaskFilters) => {
     refetch: fetchTasks,
     fetchCalendarTasks,
     fetchOverdueTasks,
+    fetchGoogleEvents,
     createTask,
     updateTask,
     deleteTask,

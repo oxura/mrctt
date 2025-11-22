@@ -10,6 +10,7 @@ export interface User {
   role: UserRole;
   is_active: boolean;
   last_login_at?: string | null;
+  google_calendar_link?: string | null;
   created_at: string;
   updated_at: string;
 }
