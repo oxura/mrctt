@@ -88,7 +88,7 @@ const Calendar: React.FC<CalendarProps> = ({
                   key={task.id}
                   className={`${styles.taskItem} ${isOverdue(task) ? styles.overdue : ''} ${
                     task.is_completed ? styles.completed : ''
-                  }`}
+                  } ${task.source === 'google' ? styles.google : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     onTaskClick(task);

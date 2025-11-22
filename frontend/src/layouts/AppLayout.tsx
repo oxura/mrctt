@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import Sidebar from '../components/navigation/Sidebar';
 import Topbar from '../components/navigation/Topbar';
+import AIAssistant from '../components/ai/AIAssistant';
 import { getBreadcrumbs } from '../utils/breadcrumbs';
 import styles from './AppLayout.module.css';
 
@@ -21,7 +22,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, breadcrumbs }) => {
       <Sidebar mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
       <div className={styles.contentArea}>
         <Topbar breadcrumbs={finalBreadcrumbs} onMenuClick={() => setMobileMenuOpen(true)} />
-        <main className={styles.mainContent}>{children}</main>
+        <main className={styles.mainContent}>
+          {children}
+          <AIAssistant />
+        </main>
       </div>
     </div>
   );

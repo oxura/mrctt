@@ -9,6 +9,8 @@ import taskRoutes from './taskRoutes';
 import productRoutes from './productRoutes';
 import groupRoutes from './groupRoutes';
 import formRoutes from './formRoutes';
+import aiRoutes from './aiRoutes';
+import calendarRoutes from './calendarRoutes';
 import healthRoutes from './healthRoutes';
 import searchRoutes from './searchRoutes';
 import { productGroupsForProductRouter, productGroupRouter } from './productGroupsRoutes';
@@ -30,6 +32,8 @@ router.use('/products/:productId/groups', authenticate, tenantGuard, productGrou
 router.use('/product-groups', authenticate, tenantGuard, productGroupRouter);
 router.use('/groups', groupRoutes);
 router.use('/forms', formRoutes);
+router.use('/ai', aiRoutes);
+router.use('/calendar', calendarRoutes);
 router.use('/search', searchRoutes);
 
 export default router;

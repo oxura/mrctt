@@ -21,7 +21,7 @@ const Tasks: React.FC = () => {
   const [overdueTasks, setOverdueTasks] = useState<Task[]>([]);
   const [filters, setFilters] = useState<TaskFiltersState>({ status: undefined });
 
-  const { fetchCalendarTasks, fetchOverdueTasks, createTask, updateTask, deleteTask, toggleTaskComplete } =
+  const { fetchCalendarTasks, fetchOverdueTasks, fetchGoogleEvents, createTask, updateTask, deleteTask, toggleTaskComplete } =
     useAllTasks(filters);
 
   const isModuleEnabled = tenant?.settings?.modules?.tasks !== false;
@@ -49,12 +49,29 @@ const Tasks: React.FC = () => {
     }
 
     try {
-      const [calendar, overdue] = await Promise.all([
+      const [calendar, overdue, googleEvents] = await Promise.all([
         fetchCalendarTasks(dateFrom.toISOString(), dateTo.toISOString()),
         fetchOverdueTasks(filters.assignedTo),
+        fetchGoogleEvents(),
       ]);
 
-      setCalendarTasks(calendar);
+      const mappedGoogleEvents = googleEvents.map((event: any) => ({
+        id: event.id,
+        title: `📅 ${event.title}`,
+        description: event.description,
+        due_date: event.start,
+        is_completed: false,
+        priority: 'medium',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        tenant_id: '',
+        lead_id: null,
+        assigned_to: null,
+        created_by: null,
+        source: 'google',
+      })) as Task[];
+
+      setCalendarTasks([...calendar, ...mappedGoogleEvents]);
       setOverdueTasks(overdue);
     } catch (error) {
       console.error('Failed to load calendar data', error);
@@ -63,6 +80,7 @@ const Tasks: React.FC = () => {
     currentDate,
     fetchCalendarTasks,
     fetchOverdueTasks,
+    fetchGoogleEvents,
     filters.assignedTo,
     filters.dateFrom,
     filters.dateTo,
@@ -105,6 +123,10 @@ const Tasks: React.FC = () => {
   };
 
   const handleTaskClick = (task: Task) => {
+    if (task.source === 'google') {
+      alert('События Google Calendar нельзя редактировать здесь. Используйте Google Calendar.');
+      return;
+    }
     setSelectedTask(task);
     setIsModalOpen(true);
   };

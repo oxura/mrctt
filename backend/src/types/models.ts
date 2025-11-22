@@ -57,6 +57,7 @@ export interface User {
   is_active: boolean;
   token_version: number;
   last_login_at?: string | null;
+  google_calendar_link?: string | null;
   created_at: string;
   updated_at: string;
 }

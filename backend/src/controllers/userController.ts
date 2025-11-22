@@ -39,6 +39,12 @@ const acceptInviteSchema = z.object({
   lastName: z.string().optional(),
 });
 
+const updateProfileSchema = z.object({
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().optional(),
+  googleCalendarLink: z.string().optional(),
+});
+
 export const listTeamMembers = asyncHandler(async (req: Request, res: Response) => {
   if (!req.tenantId) {
     throw new AppError('Tenant not resolved', 400);
@@ -384,5 +390,37 @@ export const listRoles = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({
     status: 'success',
     data: { roles: rolesWithPermissions },
+  });
+});
+
+export const updateProfile = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new AppError('Authentication required', 401);
+  }
+
+  const parsed = updateProfileSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    throw new AppError('Validation failed', 400, parsed.error.flatten().fieldErrors);
+  }
+
+  const { firstName, lastName, googleCalendarLink } = parsed.data;
+
+  const updatedUser = await userRepo.update(req.user.id, {
+    first_name: firstName,
+    last_name: lastName,
+    google_calendar_link: googleCalendarLink,
+  });
+
+  if (!updatedUser) {
+    throw new AppError('User not found', 404);
+  }
+
+  const { password_hash: _, ...userWithoutPassword } = updatedUser;
+  void _;
+
+  res.status(200).json({
+    status: 'success',
+    data: { user: userWithoutPassword },
   });
 });

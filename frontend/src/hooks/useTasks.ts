@@ -19,6 +19,7 @@ export interface Task {
   created_name?: string | null;
   lead_first_name?: string | null;
   lead_last_name?: string | null;
+  source?: 'crm' | 'google';
 }
 
 export interface CreateTaskDto {

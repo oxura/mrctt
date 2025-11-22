@@ -9,6 +9,7 @@ import {
   cancelInvite,
   getCurrentUserPermissions,
   listRoles,
+  updateProfile,
 } from '../controllers/userController';
 import { authenticate } from '../middleware/auth';
 import { tenantGuard } from '../middleware/tenant';
@@ -76,6 +77,13 @@ router.get(
   authenticate,
   requirePermission('users:read'),
   listRoles
+);
+
+router.put(
+  '/profile',
+  authenticate,
+  auditLog('user.profile_updated', 'user'),
+  updateProfile
 );
 
 export default router;
