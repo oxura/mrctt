@@ -1,0 +1,227 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.header {
+  margin-bottom: 32px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 8px 0;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: #666;
+  margin: 0;
+}
+
+.section {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 16px 0;
+}
+
+.currentPlan {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.planInfo {
+  flex: 1;
+}
+
+.planName {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 8px 0;
+}
+
+.planPrice {
+  font-size: 32px;
+  font-weight: 700;
+  color: #2563eb;
+  margin: 0 0 12px 0;
+}
+
+.planPeriod {
+  font-size: 16px;
+  color: #666;
+}
+
+.planDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detailRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.statusActive {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.statusTrial {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.statusExpired {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.statusCancelled {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.planActions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 200px;
+}
+
+.button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  text-decoration: none;
+  text-align: center;
+}
+
+.buttonPrimary {
+  background: #2563eb;
+  color: white;
+}
+
+.buttonPrimary:hover {
+  background: #1d4ed8;
+}
+
+.buttonSecondary {
+  background: white;
+  color: #2563eb;
+  border: 1px solid #2563eb;
+}
+
+.buttonSecondary:hover {
+  background: #eff6ff;
+}
+
+.paymentHistory {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background: #f9fafb;
+}
+
+.table th {
+  padding: 12px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table td {
+  padding: 12px;
+  font-size: 14px;
+  color: #4b5563;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 48px 24px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  font-size: 16px;
+  color: #6b7280;
+}
+
+.error {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+.featuresList {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0 0;
+}
+
+.featuresList li {
+  padding: 8px 0;
+  font-size: 14px;
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.featuresList li:before {
+  content: '✓';
+  color: #16a34a;
+  font-weight: bold;
+}

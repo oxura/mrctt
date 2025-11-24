@@ -13,6 +13,7 @@ import aiRoutes from './aiRoutes';
 import calendarRoutes from './calendarRoutes';
 import healthRoutes from './healthRoutes';
 import searchRoutes from './searchRoutes';
+import billingRoutes from './billingRoutes';
 import { productGroupsForProductRouter, productGroupRouter } from './productGroupsRoutes';
 import { authenticate } from '../middleware/auth';
 import { tenantGuard } from '../middleware/tenant';
@@ -35,5 +36,6 @@ router.use('/forms', formRoutes);
 router.use('/ai', aiRoutes);
 router.use('/calendar', calendarRoutes);
 router.use('/search', searchRoutes);
+router.use('/billing', billingRoutes);
 
 export default router;

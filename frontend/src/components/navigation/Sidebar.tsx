@@ -28,7 +28,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
   const [collapsed, setCollapsed] = useState(false);
-  const { tenant, clear } = useAuthStore();
+  const { user, tenant, clear } = useAuthStore();
   const navigate = useNavigate();
 
   const menuItems = useMemo(() => {
@@ -53,6 +53,8 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
   const handleNavClick = () => {
     if (onMobileClose) onMobileClose();
   };
+
+  const isOwner = user?.role === 'owner';
 
   return (
     <>
@@ -109,6 +111,18 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onMobileClose }) => {
             <span className={styles.icon} aria-hidden="true">⚙️</span>
             {!collapsed && <span>Настройки</span>}
           </NavLink>
+          {isOwner && (
+            <NavLink 
+              to="/billing" 
+              className={styles.footerItem}
+              onClick={handleNavClick}
+              title={collapsed ? 'Биллинг' : undefined}
+              aria-label="Биллинг"
+            >
+              <span className={styles.icon} aria-hidden="true">💳</span>
+              {!collapsed && <span>Биллинг</span>}
+            </NavLink>
+          )}
           <NavLink 
             to="/profile" 
             className={styles.footerItem}
